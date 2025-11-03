@@ -1,0 +1,2 @@
+in terminal in gsap folder browser-sync start --server --files "**/*"
+add the file to webflow embed. 
