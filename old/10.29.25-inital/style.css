@@ -1,0 +1,481 @@
+/** {*/
+/*  border: 1px solid red;*/
+/*}*/
+
+/*data-lenis-prevent*/
+
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  /*scroll-behavior: auto;*/
+}
+
+/*.main-wrapper {*/
+/*  border: 3px solid blue;*/
+/*  max-height: 100vh;*/
+/*  overflow-y: scroll;*/
+/*  scroll-snap-type: y mandatory;*/
+/*}*/
+
+/*.section-banner,*/
+/*.n_section-header,*/
+/*.n_text-reveal-section {*/
+/*  scroll-snap-align: start;*/
+/*  height: 100vh;*/
+/*}*/
+
+/* NAV */
+.w-container {
+  max-width: unset;
+}
+
+.w-nav-overlay {
+  /*background: #e10600;*/
+  top: 0;
+  /*border: 2px solid #e10600;*/
+  /*height: 100vh;*/
+}
+
+.n_nav__menu {
+  /*position: fixed;*/
+  height: 100vh;
+  width: 100vw;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  transform: translate(0, -100%);
+  /*border: 2px solid lime;*/
+}
+
+.w-nav[data-collapse="all"] .w-nav-button {
+  display: flex;
+}
+
+body {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+body.nav-open {
+  overflow: hidden;
+  /*border: 2px solid lime;*/
+  /*position: fixed;*/
+}
+
+.n_nav__toggle[aria-expanded="false"] {}
+
+.nav-menu__link.w--current {
+  color: white;
+}
+
+.n_nav__sections-window {
+  height: 1.7em;
+  /*border: 1px solid white;*/
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(.77, 0, .18, 1);
+  display: block;
+  position: relative;
+}
+
+.n_nav__sections {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+
+.n_nav__section {
+  text-wrap: nowrap;
+}
+
+.n_nav-menu__link.w--current {
+  color: white;
+  opacity: 1;
+}
+
+.w-nav-button {
+  font-size: unset;
+  z-index: 5;
+}
+
+.n_text-reveal-section {
+  height: 100vh;
+  min-height: 100svh;
+  max-height: 60rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 5%;
+}
+
+.n_text-reveal-section__inner {
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+}
+
+.n_text-reveal {
+  display: block;
+  /*width: 64rem;*/
+}
+
+.n_text-reveal__extra {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: unset;
+  height: unset;
+}
+
+.n_text-reveal__extra .special__typography-fans {
+  position: absolute;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+}
+
+.n_text-reveal__extra .special__typography-fans .typography-fans-svg {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.n_text-reveal__extra .special__typography-fans .typography-fans-svg svg {
+  max-height: 80vh;
+  width: 100%;
+}
+
+@media only screen and (max-width: 767px) {
+  .special__split {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+}
+
+.n_text-reveal__block,
+.n_logo-reveal__block {
+  width: 100%;
+  height: unset;
+  display: block;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  user-select: none;
+  pointer-events: none;
+}
+
+.n_text-reveal__block.active {
+  user-select: text;
+  pointer-events: auto;
+  /*border: 2px solid lime;*/
+}
+
+.n_text-reveal__block[data-animate-special="anton"] {
+  /*border: 2px solid orange;*/
+}
+
+.n_text-reveal__block[data-animate-special="anton"] .n_text-reveal__headings {
+  position: relative;
+  width: 100%;
+}
+
+.n_text-reveal__block[data-animate-special="anton"] .n_text-reveal__headings .n_text-reveal__heading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+}
+
+.n_text-reveal__block[data-animate-special="anton"] .n_text-reveal__headings .n_text-reveal__heading .n_text-reveal__text {
+  width: 100%;
+}
+
+/*.n_logo-row__logos.n_logo-row__icons {*/
+/*  border: 1px solid red;*/
+/*}*/
+
+/*.n_logo-row__window.n_logo-row__icons svg {*/
+/*  width: 100%;*/
+/*}*/
+
+.n_logo-row__window.n_logo-row__icons .w-embed {
+  width: 100%;
+}
+
+.text-reveal__word {
+  display: inline-block;
+}
+
+.n_bg-video {
+  position: absolute;
+}
+
+/* WORDMARK */
+@media only screen and (max-width: 767px) {
+  .fanatics-logo-ani video {
+    border: 1px solid red;
+    object-fit: contain !important;
+  }
+
+}
+
+/* BANNERS */
+/*.section-banner {*/
+/*  border: 1px solid red;*/
+/*}*/
+
+/*.section-banner {*/
+/*  position: sticky;*/
+/*  top: 0;*/
+/* “pin” to the very top of the viewport */
+/*  z-index: 5;*/
+/* sit above your content */
+/* optional, so it spans the full width: */
+/*  width: 100%;*/
+/*  border: 1px solid red;*/
+/*background: #fff;*/
+/* or whatever */
+/*}*/
+
+/* fans sans section */
+
+.section-fans__text-wrapper {
+  position: relative;
+  /*border: 1px solid red;*/
+  width: 100%;
+}
+
+@media only screen and (min-width: 767px) {}
+
+.section-fans__side.section-fans__side--text {
+  /*width: 40rem;*/
+
+  /*border: 2px solid pink;*/
+}
+
+.section-fans__text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  /*width: 40rem;*/
+  max-width: 100%;
+
+}
+
+.section-fans__side--lottie svg {
+  /*width: 120vw !important;*/
+  min-width: 120vw;
+}
+
+@media only screen and (max-width: 767px) {
+  .section-fans__side--lottie svg {
+    /*width: 120vw !important;*/
+    min-width: 200vw;
+  }
+
+}
+
+#fan-sans-lottie--hidden {
+  display: none;
+}
+
+/* TYPOGRAPHY */
+/*.special__split {*/
+/*  border: 1px solid lime;*/
+/*}*/
+/*.type-text__svg {*/
+/*  height: 100%;*/
+/*}*/
+
+/*ACCORDION*/
+.n_scroll-accordion {
+  max-height: 100svh;
+  padding: 0 5%;
+  display: flex;
+  align-items: center;
+}
+
+.n_scroll-accordion__container {
+  gap: 0;
+}
+
+.n_accordion-title.active {
+  box-sizing: border-box;
+  overflow: hidden;
+  font-size: clamp(4.0625rem, 2.0744rem + 9.9405vw, 14.5rem);
+}
+
+.panels-mask {
+  opacity: 0;
+  visibility: hidden;
+  transition: none;
+}
+
+.panels-mask__inner {
+  gap: unset;
+}
+
+.n_scroll-accordion .panel__definition {
+  position: absolute;
+  transform: translateY(50px);
+  left: 0;
+}
+
+/*logo text reveal*/
+.n_logo-row__window {
+  /*border: 1px solid red;*/
+}
+
+.n_logo-row__logos {
+  /*position: relative;*/
+  width: max-content;
+}
+
+.n_logo-row__window::before,
+.n_logo-row__window::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 30%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.n_logo-row__window::before {
+  left: 0;
+  background: linear-gradient(to right, white 0%, transparent 100%);
+}
+
+.n_logo-row__window::after {
+  right: 0;
+  background: linear-gradient(to left, white 0%, transparent 100%);
+}
+
+.colors-wrapper .colors {
+  display: flex;
+}
+
+/*.color-panel {*/
+/*  width: 5em;*/
+/*}*/
+
+/* STACKED SLIDER */
+
+.n_stacked-slider {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+
+}
+
+.n_stacked-slide {
+  /*border: 1px solid red;*/
+  position: absolute;
+  inset: 0;
+}
+
+/* BIG SLIDER */
+.n_big-slider {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.n_big-slider .n_big-slide {
+  position: absolute;
+  inset: 0;
+  /*border: 1px solid red;*/
+}
+
+#from-fans {
+  object-position: top center;
+}
+
+.fanatics-logo-ani video {
+  width: 110%;
+  height: 110%;
+}
+
+.color-panel .colors-content {
+  opacity: 0;
+
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 0.3s ease;
+  overflow: hidden;
+  transition: all 0.2s ease-out;
+}
+
+.color-panel.active {
+  /*border: 1px solid lime;*/
+  border: unset;
+}
+
+.color-panel.active .colors-content {
+  opacity: 1;
+
+}
+
+svg {
+  max-width: 100%;
+}
+
+.section-fade-up {
+  opacity: 1;
+  transform: translateY(50px);
+}
+
+/*BEFORE*/
+
+@media (prefers-reduced-motion: reduce) {
+  .text-reveal-content {
+    /* turn off GSAP pinning and scrambling entirely */
+    will-change: auto !important;
+  }
+}
+.section-banner, .section-split{
+    width: 100%;
+}
+// .section-banner,
+// .n_section-header, .section-split, .n_scrolling-slider, .section-split {
+//   border: 1px solid red;
+//   position: fixed;
+//   position: absolute;
+//   left: 0;
+//   will-change: transform;
+// }
+.observer-section .section-banner,
+.observer-section .n_section-header,.observer-section .section-split,.observer-section .n_scrolling-slider,.observer-section .section-split {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+// .main-wrapper{
+//     position: relative;
+//     border:3px solid hotpink;
+//     height: 100vh;
+//     width: 100vw;
+//     overflow: hidden;
+// }
+
+.observer-section{
+    width: 100vw;
+    height: 100vh;
+    background-color: pink;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
