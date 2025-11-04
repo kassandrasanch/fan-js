@@ -5,7 +5,7 @@
 // DONE
 // add wait for fonts to load before showing body.
 // add nav to init.
-  // check to see if this fixes brand design principles nav spacing issue
+// check to see if this fixes brand design principles nav spacing issue
 // replace header video
 // fix double span on splitTextIntoWords
 // fix dot reveal
@@ -13,7 +13,7 @@
 
 gsap.registerPlugin(ScrollTrigger, SplitText);
 
-console.log("hi from local");
+// console.log("hi from local");
 
 const lenis = new Lenis({
     duration: 2,
@@ -29,12 +29,6 @@ function raf(time) {
 requestAnimationFrame(raf);
 
 lenis.on("scroll", () => ScrollTrigger.update());
-
-// Display the body
-document.querySelector("body").style.display = "block";
-
-// Fade in the body after scripts load
-gsap.fromTo("body", { opacity: 0 }, { opacity: 1, duration: 0.5 });
 
 const toggleSectionInfo = document.querySelector(".n_nav__sections");
 const sections = document.querySelectorAll("section[data-section-number][data-section-title]");
@@ -291,210 +285,6 @@ function wireNav() {
     ScrollTrigger.addEventListener("refresh", setWindowHeight);
 }
 
-// sections.forEach((section, i) => setToggleSectionInfo(section, i));
-
-// function setToggleSectionInfo(section, index) {
-//   const rawNumber = section.getAttribute('data-section-number') || '';
-//   const title = section.getAttribute('data-section-title') || '';
-//   const container = document.createElement('div');
-//   container.className = 'n_nav__section';
-//   const titleWrapper = document.createElement('div');
-//   titleWrapper.className = 'n_nav__section-title';
-//   const numSpan = document.createElement('span');
-//   numSpan.className = 'navbar_section-text__bold';
-
-//   // First one: no text
-//   if (index !== 0) numSpan.textContent = rawNumber.toString().padStart(2, '0') + '\u00A0';
-//   else numSpan.textContent = '';
-//   titleWrapper.appendChild(numSpan);
-//   if (index !== 0) titleWrapper.appendChild(document.createTextNode(title));
-//   container.appendChild(titleWrapper);
-//   toggleSectionInfo.appendChild(container);
-// }
-
-// // 2. Measure ghost nav widths for each label
-// let sectionWidths = [];
-// let sectionHeight = 0;
-
-// function measureSectionWidths() {
-//   // Defensive remove old ghost
-//   const oldGhost = document.querySelector('.n_nav__ghost');
-//   if (oldGhost) oldGhost.remove();
-
-//   // Clone visible nav sections to offscreen ghost
-//   const realSections = Array.from(document.querySelectorAll('.n_nav__section'));
-//   const ghostContainer = document.createElement('div');
-//   ghostContainer.className = 'n_nav__ghost';
-//   ghostContainer.style.position = 'absolute';
-//   ghostContainer.style.visibility = 'hidden';
-//   ghostContainer.style.height = 'auto';
-//   ghostContainer.style.overflow = 'visible';
-//   ghostContainer.style.whiteSpace = 'nowrap';
-//   ghostContainer.style.pointerEvents = 'none';
-//   ghostContainer.style.top = '0';
-//   ghostContainer.style.left = '0';
-//   ghostContainer.style.zIndex = '-9999';
-//   document.body.appendChild(ghostContainer);
-
-//   realSections.forEach((sec, i) => {
-//     const clone = sec.cloneNode(true);
-//     clone.style.display = 'block';
-//     clone.style.visibility = 'visible';
-//     ghostContainer.appendChild(clone);
-//   });
-
-//   const ghostSections = Array.from(ghostContainer.querySelectorAll('.n_nav__section'));
-//   sectionHeight = ghostSections[1]?.getBoundingClientRect().height || 0;
-
-//   sectionWidths = ghostSections.map((el, i) => {
-//     if (i === 0) return 0;
-//     let elTitle = el.querySelector('.n_nav__section-title');
-//     let width = elTitle ? elTitle.getBoundingClientRect().width : el.getBoundingClientRect()
-//       .width;
-
-//     return width;
-//   });
-
-//   ghostSections.forEach((el, i) => {
-//     const title = el.innerText.trim();
-//   });
-
-//   document.body.removeChild(ghostContainer);
-// }
-
-// // Initial measure
-// measureSectionWidths();
-
-// // 3. Get the containers for sliding/width
-// const navSectionsWindow = document.querySelector('.n_nav__sections-window');
-// const navSectionsInner = document.querySelector('.n_nav__sections');
-// const sectionElements = Array.from(document.querySelectorAll('section[data-section-number]'));
-
-// // 4. Responsive: set height of window to a single slot
-// function setWindowHeight(i = 0) {
-//   navSectionsWindow.style.height = sectionHeight + "px";
-// }
-
-// // Set initial height & measure widths on resize
-// setWindowHeight();
-// window.addEventListener('resize', () => {
-//   measureSectionWidths();
-//   setWindowHeight();
-// });
-
-// gsap.utils.toArray(sectionElements).forEach((pageSection, i) => {
-//   ScrollTrigger.create({
-//     trigger: pageSection,
-//     start: "top-=50 top",
-//     end: 'bottom top',
-//     onEnter: () => goToSection(i),
-//     onEnterBack: () => goToSection(i),
-//     // markers: true,
-//     refreshPriority: -1,
-//     onLeaveBack: () => {
-//       console.log(`on onLeaveBack index ${i}`)
-//       if (i === 0) {
-//         goToSection(0);
-//       } else {
-//         goToSection(i - 1);
-//       }
-//     },
-//     // Optional (for completeness):
-//     onLeave: () => {
-//       // console.log(`leaving section ${i}`)
-//       if (i === sectionElements.length - 1) return;
-//       goToSection(i + 1);
-//     }
-//   });
-// });
-
-// function goToSection(i) {
-//   if (typeof sectionWidths[i] === "undefined") return;
-
-//   gsap.to(navSectionsWindow, {
-//     width: sectionWidths[i] + 'px',
-//     duration: 0.3,
-//     ease: 'power4.out'
-//   });
-
-//   gsap.to(navSectionsInner, {
-//     y: -i * sectionHeight + 'px',
-
-//     duration: 0.3,
-//     ease: 'power4.out'
-//   });
-// }
-
-// navSectionsWindow.style.width = sectionWidths[0] + 'px';
-// gsap.set(navSectionsInner, { yPercent: 0 });
-
-// // navClick
-// const navToggle = document.querySelector('.n_nav__toggle');
-// const navMenu = document.querySelector('.n_nav__menu');
-// const navMenuPrimary = document.querySelector('.n_nav__menu-primary');
-// const navHeader = document.querySelector('.n_nav__inner');
-// const navBrand = document.querySelector('.n_nav__brand');
-// const mainWrapper = document.querySelector('.main-wrapper')
-
-// let scrollPosition = 0;
-
-// function onEscapeKey(e) {
-//   if (e.key === 'Escape' || e.key === 'Esc') {
-//     closeNav();
-//   }
-// }
-
-// function openNav() {
-//   lenis.stop();
-//   document.querySelector('body').classList.add('nav-open');
-//   navToggle.setAttribute('aria-expanded', 'true');
-
-//   // Add Escape listener
-//   document.addEventListener('keydown', onEscapeKey);
-
-//   let tl = gsap.timeline()
-//   tl.to(navMenu, { y: 0, autoAlpha: 1, duration: 0.3, ease: "power4.out" })
-
-//     .to(navBrand, { opacity: 1, pointerEvents: "auto" }, "<");
-//   gsap.set(navHeader, {
-//     backgroundColor: "#e10600"
-//   })
-// }
-
-// function closeNav() {
-//   lenis.start();
-//   navToggle.setAttribute('aria-expanded', 'false');
-
-//   let tl = gsap.timeline()
-//   gsap.set(navHeader, {
-//     backgroundColor: 'transparent'
-//   })
-//   tl.to(navMenu, { y: -50, autoAlpha: 0, duration: 0.1, ease: "power4.in" })
-//     .to(navBrand, { opacity: 0, pointerEvents: "none" })
-
-//   document.querySelector('body').classList.remove('nav-open');
-
-// }
-
-// function toggleNav(e) {
-//   e.preventDefault();
-//   // debugger;
-//   const expanded = navToggle.getAttribute('aria-expanded') === 'true';
-//   if (expanded) {
-//     closeNav();
-//   } else {
-//     openNav();
-//   }
-// }
-
-// navToggle.addEventListener('click', toggleNav);
-
-// function setMenuPrimaryMargin() {
-//   const navHeaderHeight = navHeader.getBoundingClientRect().height;
-//   navMenuPrimary.style.marginTop = navHeaderHeight + 'px';
-// }
-// setMenuPrimaryMargin();
-
 function splitTextIntoWords(
     element,
     wrapClass = "text-reveal__word-wrap",
@@ -732,7 +522,7 @@ function initVideoTextScrub(wrapper) {
         scrollTrigger: {
             trigger: wrapper,
             start: "top top",
-            end: () => `+=${blocks.length * 1400}`,
+            end: () => `+=${blocks.length * 700}`,
             pin: true,
             scrub: 1,
 
@@ -855,7 +645,7 @@ function revealText(wrapper) {
         scrollTrigger: {
             trigger: wrapper,
             start: "top top",
-            end: () => `+=${blocks.length * 800}`,
+            end: () => `+=${blocks.length * 700}`,
             pin: true,
             scrub: 1,
 
@@ -916,38 +706,32 @@ function revealText(wrapper) {
 
         // CHECK FOR ANTON
         if (block.dataset.animateSpecial === "anton") {
-            let antonTl = animateAnton(block);
-            masterTl.add(antonTl);
+            masterTl.add(animateAnton(block));
             return;
         }
 
         if (block.dataset.animateSpecial === "instrument") {
-            let instrumentTl = animateInstrument(block);
-            masterTl.add(instrumentTl);
+            masterTl.add(animateInstrument(block));
             return;
         }
 
         if (block.dataset.animateSpecial === "inter") {
-            let interTl = animateInter(block);
-            masterTl.add(interTl);
+            masterTl.add(animateInter(block));
             return;
         }
 
         if (block.dataset.animateSpecial === "bk-switch--white") {
-            let specialTl = animateBk(block);
-            masterTl.add(specialTl);
+            masterTl.add(animateBk(block));
             return;
         }
 
         if (block.dataset.animateSpecial === "like-this") {
-            let specialTl = animateLikeThis(block, wrapper);
-            masterTl.add(specialTl);
+            masterTl.add(animateLikeThis(block, wrapper));
             return;
         }
 
         if (block.dataset.animateSpecial === "logomark") {
-            let specialTl = animateLogoMark(block, wrapper);
-            masterTl.add(specialTl);
+            masterTl.add(animateLogoMark(block, wrapper));
             return;
         }
 
@@ -1399,7 +1183,8 @@ function dotAnimate() {
             start: "top 40%",
             end: "+=300",
             toggleActions: "play none none reverse",
-            scrub: 1
+            scrub: 1,
+            markers:true
         }
     });
     dotAnimation.to(".dot-wrapper", {
@@ -2205,7 +1990,37 @@ sectionHeaders.forEach((section, i) => {
     );
 });
 
-function init() {
+function waitForFonts(timeout = 5000) {
+    if (!document.fonts || document.fonts.status === "loaded") return Promise.resolve();
+    return Promise.race([
+        document.fonts.ready,
+        new Promise((res) => setTimeout(res, timeout)) // fallback
+    ]);
+}
+
+// wait for header/hero videos that affect layout
+function waitForVideos(selectors = ".n_header video, .page-header video", timeout = 6000) {
+    const vids = Array.from(document.querySelectorAll(selectors));
+    if (!vids.length) return Promise.resolve();
+
+    return Promise.race([
+        Promise.allSettled(
+            vids.map((v) => {
+                if (v.readyState >= 3) return Promise.resolve(); // HAVE_FUTURE_DATA+
+                return new Promise((res) => {
+                    v.addEventListener("loadeddata", res, { once: true });
+                    v.addEventListener("error", res, { once: true });
+                });
+            })
+        ),
+        new Promise((res) => setTimeout(res, timeout)) // don't hang forever
+    ]);
+}
+
+async function init() {
+    await waitForFonts();
+    await waitForVideos();
+
     initTextRevealSections();
     initFanSansLottie();
     initColorPanels();
@@ -2214,17 +2029,22 @@ function init() {
     // // initStoryLottie()
     initScrollingSlider();
     wireNav();
+
+    // Display the body
+    document.querySelector("body").style.display = "block";
+
+    // Fade in the body after scripts load
+    gsap.fromTo("body", { opacity: 0 }, { opacity: 1, duration: 0.5 });
 }
 
 window.addEventListener("load", init);
 
 setTimeout(() => {
     ScrollTrigger.sort();
-
     ScrollTrigger.refresh();
 }, 600);
 
-// https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/6843520aa1e4f9f54b166004_2025_06_06_EASCI_Fanatics_ColorCascade_01.json
+// extra refresh when fonts report late (Safari, etc.)
 Promise.resolve(document.fonts?.ready).finally(() =>
     requestAnimationFrame(() => ScrollTrigger.refresh())
 );

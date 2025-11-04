@@ -1,0 +1,17 @@
+{
+  "name": "gsap",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:js": "terser scripts/scroll-update.js -o dist/scroll-update.min.js -c -m",
+    "build:all": "mkdir -p dist && terser scripts/*.js -o dist/bundle.min.js -c -m --module --toplevel"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "terser": "^5.44.0"
+  }
+}
