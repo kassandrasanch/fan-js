@@ -1,27 +1,31 @@
-// TODO
-// check mobile
-// should we move them all into a slider anyway?
+// browser-sync start --server --files "**/*"
 
-// DONE
-// add wait for fonts to load before showing body.
-// add nav to init.
-  // check to see if this fixes brand design principles nav spacing issue
-// replace header video
-// fix double span on splitTextIntoWords
-// fix dot reveal
-// fix gsap target not found errors
+// should i add all textreveal and slider sections into the build slider function? so its all one big scrolltrigger pin?
+// fans to text reveal breaks sometimes break on reload. it will go to text-reveal but skip a chunk of the animation -- i think fixed
+// check out story lottie at bottom
+// sometimes nav gets out of sync and stuck in the middle
 
 gsap.registerPlugin(ScrollTrigger, SplitText);
 
-console.log("hi from local");
+// window.history.scrollRestoration = "manual";
+// window.scrollTo(0, 0);
+
+console.log("hi scroll update from local");
+
+// const lenis = new Lenis({
+//     duration: 2,
+//     easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+//     smooth: true,
+//     wheelMultiplier: 0.7
+// });
 
 const lenis = new Lenis({
-    duration: 2,
-    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-    smooth: true,
-    wheelMultiplier: 0.7
+  duration: 1.2,            // scroll ease time (lower = snappier)
+  easing: (t) => 1 - Math.pow(1 - t, 2), // your custom ease
+  wheelMultiplier: 0.7,     // reduces aggressive trackpad deltas
+  smoothWheel: true,        // ensures uniform wheel behavior
+  smoothTouch: true,        // same for touch
 });
-
 function raf(time) {
     lenis.raf(time);
     requestAnimationFrame(raf);
@@ -294,22 +298,22 @@ function wireNav() {
 // sections.forEach((section, i) => setToggleSectionInfo(section, i));
 
 // function setToggleSectionInfo(section, index) {
-//   const rawNumber = section.getAttribute('data-section-number') || '';
-//   const title = section.getAttribute('data-section-title') || '';
-//   const container = document.createElement('div');
-//   container.className = 'n_nav__section';
-//   const titleWrapper = document.createElement('div');
-//   titleWrapper.className = 'n_nav__section-title';
-//   const numSpan = document.createElement('span');
-//   numSpan.className = 'navbar_section-text__bold';
+//     const rawNumber = section.getAttribute("data-section-number") || "";
+//     const title = section.getAttribute("data-section-title") || "";
+//     const container = document.createElement("div");
+//     container.className = "n_nav__section";
+//     const titleWrapper = document.createElement("div");
+//     titleWrapper.className = "n_nav__section-title";
+//     const numSpan = document.createElement("span");
+//     numSpan.className = "navbar_section-text__bold";
 
-//   // First one: no text
-//   if (index !== 0) numSpan.textContent = rawNumber.toString().padStart(2, '0') + '\u00A0';
-//   else numSpan.textContent = '';
-//   titleWrapper.appendChild(numSpan);
-//   if (index !== 0) titleWrapper.appendChild(document.createTextNode(title));
-//   container.appendChild(titleWrapper);
-//   toggleSectionInfo.appendChild(container);
+//     // First one: no text
+//     if (index !== 0) numSpan.textContent = rawNumber.toString().padStart(2, "0") + "\u00A0";
+//     else numSpan.textContent = "";
+//     titleWrapper.appendChild(numSpan);
+//     if (index !== 0) titleWrapper.appendChild(document.createTextNode(title));
+//     container.appendChild(titleWrapper);
+//     toggleSectionInfo.appendChild(container);
 // }
 
 // // 2. Measure ghost nav widths for each label
@@ -317,183 +321,365 @@ function wireNav() {
 // let sectionHeight = 0;
 
 // function measureSectionWidths() {
-//   // Defensive remove old ghost
-//   const oldGhost = document.querySelector('.n_nav__ghost');
-//   if (oldGhost) oldGhost.remove();
+//     // Defensive remove old ghost
+//     const oldGhost = document.querySelector(".n_nav__ghost");
+//     if (oldGhost) oldGhost.remove();
 
-//   // Clone visible nav sections to offscreen ghost
-//   const realSections = Array.from(document.querySelectorAll('.n_nav__section'));
-//   const ghostContainer = document.createElement('div');
-//   ghostContainer.className = 'n_nav__ghost';
-//   ghostContainer.style.position = 'absolute';
-//   ghostContainer.style.visibility = 'hidden';
-//   ghostContainer.style.height = 'auto';
-//   ghostContainer.style.overflow = 'visible';
-//   ghostContainer.style.whiteSpace = 'nowrap';
-//   ghostContainer.style.pointerEvents = 'none';
-//   ghostContainer.style.top = '0';
-//   ghostContainer.style.left = '0';
-//   ghostContainer.style.zIndex = '-9999';
-//   document.body.appendChild(ghostContainer);
+//     // Clone visible nav sections to offscreen ghost
+//     const realSections = Array.from(document.querySelectorAll(".n_nav__section"));
+//     const ghostContainer = document.createElement("div");
+//     ghostContainer.className = "n_nav__ghost";
+//     ghostContainer.style.position = "absolute";
+//     ghostContainer.style.visibility = "hidden";
+//     ghostContainer.style.height = "auto";
+//     ghostContainer.style.overflow = "visible";
+//     ghostContainer.style.whiteSpace = "nowrap";
+//     ghostContainer.style.pointerEvents = "none";
+//     ghostContainer.style.top = "0";
+//     ghostContainer.style.left = "0";
+//     ghostContainer.style.zIndex = "-9999";
+//     document.body.appendChild(ghostContainer);
 
-//   realSections.forEach((sec, i) => {
-//     const clone = sec.cloneNode(true);
-//     clone.style.display = 'block';
-//     clone.style.visibility = 'visible';
-//     ghostContainer.appendChild(clone);
-//   });
+//     realSections.forEach((sec, i) => {
+//         const clone = sec.cloneNode(true);
+//         clone.style.display = "block";
+//         clone.style.visibility = "visible";
+//         ghostContainer.appendChild(clone);
+//     });
 
-//   const ghostSections = Array.from(ghostContainer.querySelectorAll('.n_nav__section'));
-//   sectionHeight = ghostSections[1]?.getBoundingClientRect().height || 0;
+//     const ghostSections = Array.from(ghostContainer.querySelectorAll(".n_nav__section"));
+//     sectionHeight = ghostSections[1]?.getBoundingClientRect().height || 0;
 
-//   sectionWidths = ghostSections.map((el, i) => {
-//     if (i === 0) return 0;
-//     let elTitle = el.querySelector('.n_nav__section-title');
-//     let width = elTitle ? elTitle.getBoundingClientRect().width : el.getBoundingClientRect()
-//       .width;
+//     sectionWidths = ghostSections.map((el, i) => {
+//         if (i === 0) return 0;
+//         let elTitle = el.querySelector(".n_nav__section-title");
+//         let width = elTitle
+//             ? elTitle.getBoundingClientRect().width
+//             : el.getBoundingClientRect().width;
 
-//     return width;
-//   });
+//         return width;
+//     });
 
-//   ghostSections.forEach((el, i) => {
-//     const title = el.innerText.trim();
-//   });
+//     ghostSections.forEach((el, i) => {
+//         const title = el.innerText.trim();
+//     });
 
-//   document.body.removeChild(ghostContainer);
+//     document.body.removeChild(ghostContainer);
 // }
 
 // // Initial measure
 // measureSectionWidths();
 
 // // 3. Get the containers for sliding/width
-// const navSectionsWindow = document.querySelector('.n_nav__sections-window');
-// const navSectionsInner = document.querySelector('.n_nav__sections');
-// const sectionElements = Array.from(document.querySelectorAll('section[data-section-number]'));
+// const navSectionsWindow = document.querySelector(".n_nav__sections-window");
+// const navSectionsInner = document.querySelector(".n_nav__sections");
+// const sectionElements = Array.from(document.querySelectorAll("section[data-section-number]"));
 
 // // 4. Responsive: set height of window to a single slot
 // function setWindowHeight(i = 0) {
-//   navSectionsWindow.style.height = sectionHeight + "px";
+//     navSectionsWindow.style.height = sectionHeight + "px";
 // }
 
 // // Set initial height & measure widths on resize
 // setWindowHeight();
-// window.addEventListener('resize', () => {
-//   measureSectionWidths();
-//   setWindowHeight();
+// window.addEventListener("resize", () => {
+//     measureSectionWidths();
+//     setWindowHeight();
 // });
 
+// // 0439 do i measure sections heights here?
 // gsap.utils.toArray(sectionElements).forEach((pageSection, i) => {
-//   ScrollTrigger.create({
-//     trigger: pageSection,
-//     start: "top-=50 top",
-//     end: 'bottom top',
-//     onEnter: () => goToSection(i),
-//     onEnterBack: () => goToSection(i),
-//     // markers: true,
-//     refreshPriority: -1,
-//     onLeaveBack: () => {
-//       console.log(`on onLeaveBack index ${i}`)
-//       if (i === 0) {
-//         goToSection(0);
-//       } else {
-//         goToSection(i - 1);
-//       }
-//     },
-//     // Optional (for completeness):
-//     onLeave: () => {
-//       // console.log(`leaving section ${i}`)
-//       if (i === sectionElements.length - 1) return;
-//       goToSection(i + 1);
-//     }
-//   });
+//     ScrollTrigger.create({
+//         trigger: pageSection,
+//         start: "top-=50 top",
+//         end: "bottom top",
+//         onEnter: () => goToSection(i),
+//         onEnterBack: () => goToSection(i),
+//         // markers: true,
+//         refreshPriority: -1,
+//         onLeaveBack: () => {
+//             // console.log(`on onLeaveBack index ${i}`)
+//             if (i === 0) {
+//                 goToSection(0);
+//             } else {
+//                 goToSection(i - 1);
+//             }
+//         },
+//         // Optional (for completeness):
+//         onLeave: () => {
+//             // console.log(`leaving section ${i}`)
+//             if (i === sectionElements.length - 1) return;
+//             goToSection(i + 1);
+//         }
+//     });
 // });
 
 // function goToSection(i) {
-//   if (typeof sectionWidths[i] === "undefined") return;
+//     if (typeof sectionWidths[i] === "undefined") return;
 
-//   gsap.to(navSectionsWindow, {
-//     width: sectionWidths[i] + 'px',
-//     duration: 0.3,
-//     ease: 'power4.out'
-//   });
+//     gsap.to(navSectionsWindow, {
+//         width: sectionWidths[i] + "px",
+//         duration: 0.3,
+//         ease: "power4.out"
+//     });
 
-//   gsap.to(navSectionsInner, {
-//     y: -i * sectionHeight + 'px',
+//     gsap.to(navSectionsInner, {
+//         y: -i * sectionHeight + "px",
 
-//     duration: 0.3,
-//     ease: 'power4.out'
-//   });
+//         duration: 0.3,
+//         ease: "power4.out"
+//     });
 // }
 
-// navSectionsWindow.style.width = sectionWidths[0] + 'px';
+// navSectionsWindow.style.width = sectionWidths[0] + "px";
 // gsap.set(navSectionsInner, { yPercent: 0 });
 
 // // navClick
-// const navToggle = document.querySelector('.n_nav__toggle');
-// const navMenu = document.querySelector('.n_nav__menu');
-// const navMenuPrimary = document.querySelector('.n_nav__menu-primary');
-// const navHeader = document.querySelector('.n_nav__inner');
-// const navBrand = document.querySelector('.n_nav__brand');
-// const mainWrapper = document.querySelector('.main-wrapper')
+// const navToggle = document.querySelector(".n_nav__toggle");
+// const navMenu = document.querySelector(".n_nav__menu");
+// const navMenuPrimary = document.querySelector(".n_nav__menu-primary");
+// const navHeader = document.querySelector(".n_nav__inner");
+// const navBrand = document.querySelector(".n_nav__brand");
+// const mainWrapper = document.querySelector(".main-wrapper");
 
 // let scrollPosition = 0;
 
 // function onEscapeKey(e) {
-//   if (e.key === 'Escape' || e.key === 'Esc') {
-//     closeNav();
-//   }
+//     if (e.key === "Escape" || e.key === "Esc") {
+//         closeNav();
+//     }
 // }
 
 // function openNav() {
-//   lenis.stop();
-//   document.querySelector('body').classList.add('nav-open');
-//   navToggle.setAttribute('aria-expanded', 'true');
+//     lenis.stop();
+//     document.querySelector("body").classList.add("nav-open");
+//     navToggle.setAttribute("aria-expanded", "true");
 
-//   // Add Escape listener
-//   document.addEventListener('keydown', onEscapeKey);
+//     // Add Escape listener
+//     document.addEventListener("keydown", onEscapeKey);
 
-//   let tl = gsap.timeline()
-//   tl.to(navMenu, { y: 0, autoAlpha: 1, duration: 0.3, ease: "power4.out" })
-
-//     .to(navBrand, { opacity: 1, pointerEvents: "auto" }, "<");
-//   gsap.set(navHeader, {
-//     backgroundColor: "#e10600"
-//   })
+//     let tl = gsap.timeline();
+//     tl.to(navMenu, { y: 0, autoAlpha: 1, duration: 0.3, ease: "power4.out" }).to(
+//         navBrand,
+//         { opacity: 1, pointerEvents: "auto" },
+//         "<"
+//     );
+//     gsap.set(navHeader, {
+//         backgroundColor: "#e10600"
+//     });
 // }
 
 // function closeNav() {
-//   lenis.start();
-//   navToggle.setAttribute('aria-expanded', 'false');
+//     lenis.start();
+//     navToggle.setAttribute("aria-expanded", "false");
 
-//   let tl = gsap.timeline()
-//   gsap.set(navHeader, {
-//     backgroundColor: 'transparent'
-//   })
-//   tl.to(navMenu, { y: -50, autoAlpha: 0, duration: 0.1, ease: "power4.in" })
-//     .to(navBrand, { opacity: 0, pointerEvents: "none" })
+//     let tl = gsap.timeline();
+//     gsap.set(navHeader, {
+//         backgroundColor: "transparent"
+//     });
+//     tl.to(navMenu, { y: -50, autoAlpha: 0, duration: 0.1, ease: "power4.in" }).to(navBrand, {
+//         opacity: 0,
+//         pointerEvents: "none"
+//     });
 
-//   document.querySelector('body').classList.remove('nav-open');
-
+//     document.querySelector("body").classList.remove("nav-open");
 // }
 
 // function toggleNav(e) {
-//   e.preventDefault();
-//   // debugger;
-//   const expanded = navToggle.getAttribute('aria-expanded') === 'true';
-//   if (expanded) {
-//     closeNav();
-//   } else {
-//     openNav();
-//   }
+//     e.preventDefault();
+//     // debugger;
+//     const expanded = navToggle.getAttribute("aria-expanded") === "true";
+//     if (expanded) {
+//         closeNav();
+//     } else {
+//         openNav();
+//     }
 // }
 
-// navToggle.addEventListener('click', toggleNav);
+// navToggle.addEventListener("click", toggleNav);
 
 // function setMenuPrimaryMargin() {
-//   const navHeaderHeight = navHeader.getBoundingClientRect().height;
-//   navMenuPrimary.style.marginTop = navHeaderHeight + 'px';
+//     const navHeaderHeight = navHeader.getBoundingClientRect().height;
+//     navMenuPrimary.style.marginTop = navHeaderHeight + "px";
 // }
 // setMenuPrimaryMargin();
+
+// function splitTextIntoWords(
+//     element,
+//     wrapClass = "text-reveal__word-wrap",
+//     wordClass = "text-reveal__word"
+// ) {
+//     const split = new SplitText(element, {
+//         type: "words",
+//         wordsClass: wordClass,   // let SplitText add the class
+//         linesClass: wrapClass
+//     });
+
+//     // split.words.forEach((word) => {
+//     //     const span = document.createElement("span");
+//     //     span.classList.add(wordClass);
+//     //     span.innerHTML = word.innerHTML;
+//     //     word.innerHTML = "";
+//     //     word.appendChild(span);
+//     // });
+//     // return element.querySelectorAll(`.${wordClass}`);
+//     return split.words;
+// }
+
+function revealIntroTest() {
+    let section = document.querySelector(".n_text-reveal-section");
+
+    let sectionHeadings = section.querySelectorAll(".n_text-reveal__heading");
+    const isPageHeader = section.getAttribute("element") === "page-header";
+
+    const endColor = section.dataset.endColor || "#ffffff";
+
+    const blocks = gsap.utils.toArray(
+        section.querySelectorAll(".n_text-reveal__block, .n_logo-reveal__block")
+    );
+
+    console.log(`blocks`);
+    console.log(blocks);
+
+    const total = sectionHeadings.length;
+
+    let masterTl = gsap.timeline({
+        scrollTrigger: {
+            trigger: section,
+            pin: true,
+            scrub: 0.5,
+            start: "top top",
+            end: `+=${(sectionHeadings.length - 1) * 1500}`,
+            // end: "+=" + (Math.max(0, (total - 1)) * 1500),
+
+            //  snap: total > 1 ? { snapTo: "labelsDirectional", duration: 0.35, ease: "power1.out" } : false
+            snap: {
+                snapTo: "labelsDirectional",
+                duration: { min: 0.06, max: 0.18 },
+                delay: 0.0,
+                ease: "power1.out"
+            }
+        }
+    });
+    let allWords = [];
+
+    sectionHeadings.forEach((h1) => {
+        const words = splitTextIntoWords(h1);
+        allWords.push(words);
+        prepareWords(words);
+        // masterTl.add(prepareWords(words));
+    });
+
+    // If this is your “page-header” style, fade out the fans video up front:
+    if (isPageHeader) {
+        fansVideo = section.querySelector(".n_bg-video--fans");
+        logoVideo = section.querySelector(".n_bg-video--logo");
+        flagVideo = section.querySelector(".n-bg-video--flag");
+
+        gsap.set([logoVideo], {
+            opacity: 0,
+            y: 0
+        });
+
+        const preFade = gsap.timeline();
+
+        if (fansVideo) {
+            preFade.to(fansVideo, {
+                opacity: 0,
+                duration: 0.8,
+                ease: "power2.out",
+                onComplete: () => {}
+            });
+            preFade.to(fansVideo, {
+                zIndex: "-10",
+                pointerEvents: "none"
+            });
+            // masterTl.addLabel("pre-fade", 0);
+            masterTl.add(preFade, 0);
+            // → this “preFade” sub‐timeline runs immediately (at position 0 of masterTl)
+        }
+    }
+
+    sectionHeadings.forEach((h1, i) => {
+        // if (i === 0) return;
+
+        const prev = sectionHeadings[i - 1];
+
+        const words = h1.querySelectorAll(`.text-reveal__word`);
+        // masterTl.add(prepareWords(words));
+        console.log(`words`);
+        console.log(words);
+
+        masterTl.to(words, {
+            yPercent: 0,
+            opacity: 1,
+            color: endColor,
+            duration: .5
+        });
+
+        masterTl.addLabel(`heading-${i}`);
+
+        masterTl.to(words, {
+            yPercent: 100,
+            opacity: 0,
+            ease: "power3.inOut",
+            // color: endColor,
+            duration: .5
+        });
+
+        // let testTl = gsap.timeline();
+
+        // testTl
+        //     .fromTo(
+        //         words,
+        //         {
+        //             yPercent: 100,
+        //             opacity: 0,
+        //             color: "#E10600"
+        //         },
+        //         {
+        //             yPercent: 0,
+        //             opacity: 1,
+        //             duration: 1,
+        //             ease: "power4.out"
+        //             // stagger: 0.15
+        //         }
+        //     )
+        //     .to(
+        //         words,
+        //         {
+        //             color: endColor,
+        //             duration: 1
+        //             // stagger: 0.15
+        //         },
+        //         0
+        //     );
+    });
+
+    // masterTl.addLabel("end", (total - 1) * STEP_UNITS + 0.01);
+
+        if (isPageHeader && logoVideo) {
+        const lastLine = blocks[blocks.length - 1];
+        const lastWords = lastLine.querySelectorAll("text-reveal__Word");
+
+        masterTl.to(lastWords, {
+            yPercent: 100,
+            opacity: 0,
+            duration: 0.8,
+            ease: "power3.inOut",
+            stagger: 0.1
+        });
+        masterTl.to(logoVideo, {
+            opacity: 1,
+            duration: 2,
+            ease: "power2.out"
+        });
+
+        masterTl.addLabel("logo");
+    }
+}
+
+// GSDevTools.create({animation: revealIntroTest});
 
 function splitTextIntoWords(
     element,
@@ -515,7 +701,6 @@ function splitTextIntoWords(
 
     return split.words; // these are already the wrappers you want
 }
-
 function prepareWords(words) {
     gsap.set(words, {
         yPercent: 100,
@@ -835,6 +1020,7 @@ function initVideoTextScrub(wrapper) {
 }
 
 function revealText(wrapper) {
+    const SENTENCE_MODE = true;
     const allHeadings = wrapper.querySelectorAll(".n_text-reveal__heading");
 
     const isPageHeader = wrapper.getAttribute("element") === "page-header";
@@ -855,9 +1041,10 @@ function revealText(wrapper) {
         scrollTrigger: {
             trigger: wrapper,
             start: "top top",
-            end: () => `+=${blocks.length * 800}`,
+            end: () => `+=${blocks.length * 1400}`,
             pin: true,
             scrub: 1,
+            // markers: true,
 
             toggleActions: "play reverse play reverse"
         }
@@ -1010,7 +1197,7 @@ function revealText(wrapper) {
     const totalDuration = masterTl.duration();
     if (isPageHeader && logoVideo) {
         const lastLine = blocks[blocks.length - 1];
-        const lastWords = lastLine.querySelectorAll(".text-reveal__word");
+        const lastWords = lastLine.querySelectorAll("text-reveal__Word");
 
         masterTl.to(lastWords, {
             yPercent: 100,
@@ -1376,41 +1563,232 @@ function initTextRevealSections() {
 
 // 0439
 
-gsap.utils.toArray(".section-banner, .n_section-header").forEach((el) => {
-    ScrollTrigger.create({
-        trigger: el,
-        start: "top top", // as soon as its top hits the top of the viewport
-        end: "+=100%", // pin for exactly one viewport-height of scrolling
-        pin: true,
-        pinSpacing: true
-        // markers: true
-    });
-});
+// let scrollPanels = gsap.utils.toArray(".section-banner, .n_section-header, .n_text-reveal-section");
+// panels here
+let scrollPanels = gsap.utils.toArray(".section-banner, .n_section-header, .section-split ");
+// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// // try 9 11.3.25 works ish but buggy. doesnt end right either
+// // issues
+// // nav zindex issue
+// // scrollbar not showing full height issue
+// // text sections
+// // what abt panels that are taller/shorter than viewport?
+// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// // use observer in text reveal anis?
 
-// dot Animate
+// // need direction
+// // need observer
+// // need currentIndex
 
-function dotAnimate() {
-    gsap.set(".dot-wrapper", {
-        clipPath: "circle(0% at 50% 100%)"
-    });
-    let dotAnimation = gsap.timeline({
-        scrollTrigger: {
-            trigger: ".dot-reveal-section .text-color-black",
-            start: "top 40%",
-            end: "+=300",
-            toggleActions: "play none none reverse",
-            scrub: 1
+function buildSliders() {
+    const root = document.querySelector(".main-wrapper");
+    if (!root) return;
+
+    //   need to figure out what should be slideable
+    const isSlideable = (el) => {
+        return (
+            el.matches(".section-banner, .n_section-header, .section-split") &&
+            !el.classList.contains("no-slide")
+        );
+    };
+
+    // what should be skipped
+    const isSkip = (el) =>
+        el.matches(
+            ".n_text-reveal-section, .n_scroll-accordion, .section-fans, .color-panel, .section-ripple-gradient"
+        ) || el.classList.contains("no-pin");
+
+    // what should be able to scroll naturally (either via class or bc it's tall)
+    const isAllowScroll = (el) => {
+        const elHeight = el.getBoundingClientRect().height;
+        const winHeight = window.innerHeight;
+        // console.log("isAllowScroll check:", el);
+        // console.log("elHeight:", elHeight, "window.innerHeight:", winHeight);
+        return el.classList.contains("allow-scroll") || elHeight > winHeight + 1;
+    };
+
+    // get all direct children sections of root
+    const sections = Array.from(root.querySelectorAll(":scope > section, :scope > .section"));
+
+    // flush function to wrap collected elements
+    // Flush the run = wrap the currently collected slideable siblings into one .single-scroll-section and reset the collector so the next batch can start fresh.
+    const flushRun = (run) => {
+        if (run.length <= 1) {
+            run.length = 0;
+            return;
         }
+        const wrap = document.createElement("div");
+        wrap.className = "single-scroll-section";
+        run[0].parentNode.insertBefore(wrap, run[0]);
+        run.forEach((n) => wrap.appendChild(n));
+        run.length = 0; // clear the array
+    };
+
+    // main loop
+    // let kids = Array.from(root.children);
+    let kids = Array.from(root.querySelectorAll(":scope > section > *"));
+
+    let run = [];
+
+    // console.log(`kids`)
+    // console.log(kids)
+
+    kids.forEach((el) => {
+        // WORKING
+        if (isSkip(el)) {
+            flushRun(run);
+            return;
+        }
+
+        if (isSlideable(el)) {
+            // console.log("slideable found:", el);
+            if (isAllowScroll(el)) {
+                // if it's allowed to scroll naturally, flush any collected slideables (tall panels)
+                flushRun(run); // flush any collected slideables
+
+                el.classList.add("allow-scroll"); // ensure the class is set
+                // optional ani for fade-in when entering viewport
+                // gsap.set(el, { border: "2px solid lime" });
+                ScrollTrigger.create({
+                    trigger: el,
+                    start: "top bottom-=10%",
+                    end: "bottom top+=10%",
+                    onEnter: () => el.classList.add("in-view"),
+                    onLeaveBack: () => el.classList.remove("in-view")
+                });
+                return;
+            }
+            // otherwise, collect it for slider wrapping
+            run.push(el);
+            return;
+        }
+        // not slideable, end current run and let it flow
+        flushRun(run);
     });
-    dotAnimation.to(".dot-wrapper", {
-        // clipPath: "circle(120% at center)",
-        clipPath: "circle(120% at 50% 100%)",
-        duration: 1,
-        ease: "power2.out"
+
+    // console.log(run);
+
+    flushRun(run); // final flush at end of section
+}
+
+function scrollSlider(slider) {
+    // let sidesAll = slider.querySelectorAll(".section-banner, .n_section-header, .section-split ");
+    let sidesAll = slider.querySelectorAll(
+        ":scope > .section-banner, :scope > .n_section-header, :scope > .section-split, :scope > .n_scrolling-slider"
+    );
+    const slides = gsap.utils.toArray(sidesAll);
+    // console.log(slides);
+    const totalSlides = slides.length;
+
+    // 1) Prep: set initial state for fade-ups in ALL slides
+    slides.forEach((slide) => {
+        const fadeUps = slide.querySelectorAll(".section-fade-up");
+        gsap.set(fadeUps, {
+            autoAlpha: 0,
+            y: 30
+            // optional fancier look:
+            // clipPath: "inset(15% 0% 15% 0%)"
+        });
+    });
+
+    let tl = gsap.timeline({
+        scrollTrigger: {
+            trigger: slider,
+            pin: true,
+            scrub: 0.5,
+            start: "top top",
+            // markers: true,
+            end: () => `+=${(slides.length - 1) * 1500}`,
+
+            snap: 1 / (totalSlides - 1)
+        },
+        defaults: { ease: "power4.inOut", duration: 1 }
+    });
+
+    slides.forEach((slide, i) => {
+        if (i === 0) return; // skip first slide
+        const prev = slides[i - 1];
+        const fadeUps = slide.querySelectorAll(".section-fade-up");
+        // const prevImg = imgs[i - 1];
+        // const curImg = imgs[i];
+
+        // A small sub-timeline for THIS slide’s inner elements
+        const fadeTL = gsap.timeline().to(fadeUps, {
+            // if you set clipPath above, animate it open here:
+            // clipPath: "inset(0% 0% 0% 0%)",
+            y: 0,
+            autoAlpha: 1,
+            duration: 0.6,
+            ease: "power2.out",
+            stagger: { each: 0.08, from: "start" }
+        });
+
+        // 2) push the old container up and out --- commented out to see stacked effect
+        tl.to(prev, {
+            yPercent: -100
+            // duration: 1,
+            // ease: "power4.inOut"
+        });
+
+        // 3) pull the new container in from the right
+        tl.fromTo(slide, { yPercent: 100 }, { yPercent: 0 }, "<");
+
+        // 3) fade-up the children slightly after slide starts moving in
+        tl.add(fadeTL, "<+=.5");
+
+        // dot reveal
+        const dot = slide.querySelector(".dot-wrapper");
+        if (dot) {
+            gsap.set(dot, { clipPath: "circle(0% at 50% 100%)" });
+            tl.to(
+                dot,
+                { clipPath: "circle(120% at 50% 100%)", duration: 0.6, ease: "power2.out" },
+                "<+=0.2"
+            );
+        }
+
+        // if (slide.querySelector(".section-fade-up")) {
+        //     console.log("fade-up element found inside:", slide);
+        // }
     });
 }
 
-dotAnimate();
+function initScrollSliders() {
+    let sections = document.querySelectorAll(".single-scroll-section");
+    // console.log("initScrollSliders sections:", sections);
+
+    sections.forEach((section) => {
+        if (section._initted) return;
+        section._initted = true;
+        scrollSlider(section);
+    });
+}
+
+// dot Animate
+
+// function dotAnimate() {
+//     gsap.set(".dot-wrapper", {
+//         clipPath: "circle(0% at 50% 100%)"
+//     });
+//     let dotAnimation = gsap.timeline({
+//         scrollTrigger: {
+//             trigger: ".dot-reveal-section .text-color-black",
+//             start: "top 40%",
+//             end: "+=300",
+//             toggleActions: "play none none reverse",
+//             scrub: 1,
+//             markers:true
+//         }
+//     });
+//     dotAnimation.to(".dot-wrapper", {
+//         // clipPath: "circle(120% at center)",
+//         clipPath: "circle(120% at 50% 100%)",
+//         duration: 1,
+//         ease: "power2.out"
+//     });
+// }
+
+// dotAnimate();
 
 function setMinHeight(textWrapper, textBlocks) {
     const heights = Array.from(textBlocks).map((block) => block.offsetHeight);
@@ -1809,18 +2187,16 @@ function stackedSlider(slider) {
             ease: "power4.inOut"
         });
 
-        if (prevImg) {
-            // 2) push that old image out to the right
-            tl.to(
-                prevImg,
-                {
-                    xPercent: 100,
-                    duration: 1,
-                    ease: "power4.inOut"
-                },
-                "<"
-            );
-        }
+        // 2) push that old image out to the right
+        tl.to(
+            prevImg,
+            {
+                xPercent: 100,
+                duration: 1,
+                ease: "power4.inOut"
+            },
+            "<"
+        );
 
         // 3) pull the new container in from the right
         tl.fromTo(
@@ -1924,18 +2300,15 @@ function setupBigSlider(wrapper) {
         });
 
         // 2) push that old image out to the right
-        if (prevImg) {
-            tl.to(
-                prevImg,
-                {
-                    xPercent: 100,
-                    duration: 1,
-                    ease: "power4.inOut"
-                },
-                "<"
-            );
-        }
-
+        tl.to(
+            prevImg,
+            {
+                xPercent: 100,
+                duration: 1,
+                ease: "power4.inOut"
+            },
+            "<"
+        );
         // 3) pull the new container in from the right
         tl.fromTo(
             panel,
@@ -1944,14 +2317,12 @@ function setupBigSlider(wrapper) {
             "<"
         );
         // 4) pull its image in from the left
-        if (curImg) {
-            tl.fromTo(
-                curImg,
-                { xPercent: -100 },
-                { xPercent: 0, duration: 1, ease: "power4.inOut" },
-                "<"
-            );
-        }
+        tl.fromTo(
+            curImg,
+            { xPercent: -100 },
+            { xPercent: 0, duration: 1, ease: "power4.inOut" },
+            "<"
+        );
     });
 }
 
@@ -2038,7 +2409,7 @@ function startCount() {
 // console.log('COUNTER')
 // console.log(document.querySelector('.section-banner__counter').parentElement)
 
-let bannerEl = document.querySelector(".section-banner__counter").parentElement;
+// let bannerEl = document.querySelector(".section-banner__counter").parentElement;
 // console.log(bannerEl.nextElementSibling)
 
 ScrollTrigger.create({
@@ -2128,46 +2499,50 @@ function initScrollingSlider() {
 // initScrollingSlider();
 
 // n_section-header
+// ADD THIS BACK
+// og
+// gsap.utils.toArray(".section-fade-up").forEach((section) => {
+//     // console.log(section)
+//     let parentBanner = section.closest(".section-banner");
+//     let hasParentBanner = parentBanner ? true : false;
+//     console.log(`hasParentBanner: ${hasParentBanner}`);
+//     // if (parentBanner) {
+//     //   console.log('has parentBanner')
 
-gsap.utils.toArray(".section-fade-up").forEach((section) => {
-    // console.log(section)
-    let parentBanner = section.closest(".section-banner");
-    let hasParentBanner = parentBanner ? true : false;
-    // if (parentBanner) {
-    //   console.log('has parentBanner')
+//     //   console.log(parentBanner)
 
-    //   console.log(parentBanner)
-
-    // } else {
-    //   console.log(`no parent banner`)
-    // }
-    // console.log(hasParentBanner)
-    let startFrom = hasParentBanner ? "top 10%" : "top top";
-    let toggleAct = hasParentBanner ? "play reverse play reverse" : "play none play complete";
-    gsap.fromTo(
-        section,
-        { opacity: 0, y: 50 }, // start
-        {
-            opacity: 1,
-            y: 0,
-            duration: 0.5,
-            ease: "power2.out",
-            scrollTrigger: {
-                trigger: hasParentBanner ? parentBanner : section,
-                // start: "top 80%", // reveal when near 80% viewport
-                start: startFrom,
-                // toggleActions: "play none play complete",
-                toggleActions: toggleAct
-                // markers: true,
-                // scrub: true
-            }
-        }
-    );
-});
+//     // } else {
+//     //   console.log(`no parent banner`)
+//     // }
+//     // console.log(hasParentBanner)
+//     let startFrom = hasParentBanner ? "top 10%" : "top top";
+//     let toggleAct = hasParentBanner ? "play reverse play reverse" : "play none play complete";
+//     gsap.fromTo(
+//         section,
+//         { opacity: 0, y: 50 }, // start
+//         {
+//             opacity: 1,
+//             y: 0,
+//             duration: 0.5,
+//             ease: "power2.out",
+//             scrollTrigger: {
+//                 trigger: hasParentBanner ? parentBanner : section,
+//                 // start: "top 80%", // reveal when near 80% viewport
+//                 start: startFrom,
+//                 // toggleActions: "play none play complete",
+//                 toggleActions: toggleAct,
+//                 markers: true
+//                 // scrub: true
+//             }
+//         }
+//     );
+// });
 
 const sectionHeaders = document.querySelectorAll(".n_section-header");
 // console.log(`sectionHeaders`)
 // console.log(sectionHeaders)
+
+// ADD THIS BACK
 sectionHeaders.forEach((section, i) => {
     let header = section.querySelector(".n_section-header__title");
     let number = section.querySelector(".n_section-header__number");
@@ -2203,17 +2578,38 @@ sectionHeaders.forEach((section, i) => {
         },
         "<"
     );
+
+    let markerTl = gsap.timeline({
+        scrollTrigger: {
+            trigger: header,
+            start: "top top",
+            end: "bottom top",
+            // scrub: 1,
+            // markers: true,
+            toggleActions: "play none none reset"
+        }
+    });
+    // markerTl.to()
 });
 
 function init() {
-    initTextRevealSections();
+    buildSliders();
+    // initTextRevealSections();
+    revealIntroTest();
+
+    initScrollSliders();
+
     initFanSansLottie();
     initColorPanels();
     initStackedSliders();
     initBigSliderAnimations();
     // // initStoryLottie()
     initScrollingSlider();
+
     wireNav();
+
+    const fontsReady = document.fonts ? document.fonts.ready : Promise.resolve();
+    fontsReady.then(() => gsap.delayedCall(0, () => ScrollTrigger.refresh()));
 }
 
 window.addEventListener("load", init);
@@ -2223,7 +2619,7 @@ setTimeout(() => {
 
     ScrollTrigger.refresh();
 }, 600);
-
+// ScrollTrigger.normalizeScroll(true);
 // https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/6843520aa1e4f9f54b166004_2025_06_06_EASCI_Fanatics_ColorCascade_01.json
 Promise.resolve(document.fonts?.ready).finally(() =>
     requestAnimationFrame(() => ScrollTrigger.refresh())

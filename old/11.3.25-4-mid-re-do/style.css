@@ -447,8 +447,34 @@ svg {
 .section-split {
     width: 100%;
 }
+/*  .section-banner,
+.n_section-header, .section-split, .n_scrolling-slider, .section-split {
+   border: 1px solid red;
+  position: fixed;
+  position: absolute;
+  left: 0;
+  will-change: transform;
+ }
+.main-wrapper{
+    position: relative;
+    border:3px solid hotpink;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+ } */
 
-
+.observer-section .section-banner,
+.observer-section .n_section-header,
+.observer-section .section-split,
+.observer-section .n_scrolling-slider,
+.observer-section .section-split {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    border: 1px solid red;
+}
 .single-scroll-section .section-banner,
 .single-scroll-section .n_section-header,
 .single-scroll-section .section-split,
