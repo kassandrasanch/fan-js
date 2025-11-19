@@ -485,9 +485,7 @@ svg {
 }
 
 
-body{
-    background-color: black;
-}
+
 /* PAGE SLIDER */
 .slider-wrapper {
     position: relative;  /* important for absolute .slide children */
@@ -506,11 +504,11 @@ body{
     inset: 0;
     border: 2px solid chartreuse;
     background-color: red;
-    height: 100svh;
+    height: 100vh;
     
     /*border: 1px solid red;*/
 }
 
 .slider-inner .section-banner__inner{
-    /* z-index: unset; */
+    z-index: unset;
 }

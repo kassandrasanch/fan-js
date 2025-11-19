@@ -483,34 +483,3 @@ svg {
     border: 3px solid chartreuse;
     overflow: hidden;
 }
-
-
-body{
-    background-color: black;
-}
-/* PAGE SLIDER */
-.slider-wrapper {
-    position: relative;  /* important for absolute .slide children */
-    height: 100vh;
-    overflow: hidden;
-}
-
-.slider-inner {
-    width: 100%;
-    height: 100vh;
-    overflow: hidden;
-}
-
-.slider-inner  .slide {
-    position: absolute;
-    inset: 0;
-    border: 2px solid chartreuse;
-    background-color: red;
-    height: 100svh;
-    
-    /*border: 1px solid red;*/
-}
-
-.slider-inner .section-banner__inner{
-    /* z-index: unset; */
-}

@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:js": "terser scripts/scroll-update.js -o dist/scroll-update.min.js -c -m",
+    "build:js": "terser scripts/scroll-update.js -o dist/scroll-update.min.js -c -m --wrap animations",
     "build:all": "mkdir -p dist && terser scripts/*.js -o dist/bundle.min.js -c -m --module --toplevel"
   },
   "keywords": [],
