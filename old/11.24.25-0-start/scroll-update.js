@@ -1547,15 +1547,6 @@ function setupPageSlider(wrapper) {
             );            
         }
 
-        const slideInPlaceLabel = `${label}-in-place`;
-
-        if(i > 0){
-            tl.addLabel(slideInPlaceLabel, `>`);
-        } else {
-            // first slide is already in view, so content can start at the slide label
-            tl.add(slideInPlaceLabel, label);
-        }
-
        
         // if (i > 0) {
 

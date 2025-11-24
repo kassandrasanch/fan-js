@@ -322,7 +322,7 @@ function animateWordsIn(words, endColor, duration = 1, stagger = 0.15) {
             {
                 yPercent: 100,
                 opacity: 0,
-                color: "#E10600"
+                color: "#E10600",
             },
             {
                 yPercent: 0,
@@ -1320,11 +1320,8 @@ function initBigSliderAnimations() {
     gsap.utils.toArray(".n_big-slider_wrapper").forEach(setupPageSlider);
 }
 // 11.20.25 notes
-// fix split text banner styling
-// make accordion tabbable
-
-//done
 // text reveal doesnt animate first block
+// make accordion tabbable
 
 // < // start at the beginning of prev tween
 // +2 // start 2 seconds after the end of prev tween
@@ -1357,12 +1354,18 @@ function setupPageSlider(wrapper) {
             markers: true,
             start: "top top",
             end: `+=${(total - 1) * window.innerHeight * 2}`,
-            // added 11.21.25, should update to tolerate timeline changes so it doesnt just cache once
             snap: (rawProgress) => {
-                // Rebuild normalized label positions on every call
-                const labels = slides
-                    .map((_, i) => tl.labels[`slide-${i}`] / tl.duration())
-                    .sort((a, b) => a - b);
+                // Build normalized label positions once
+                if (!tl._labelProgress) {
+                    tl._labelProgress = slides
+                        .map((_, i) => {
+                            const t = tl.labels[`slide-${i}`];
+                            return t / tl.duration(); // 0–1
+                        })
+                        .sort((a, b) => a - b);
+                }
+
+                const labels = tl._labelProgress;
 
                 // Find which segment (slide) we're in: [labels[i], labels[i+1]]
                 let segIndex = 0;
@@ -1377,14 +1380,19 @@ function setupPageSlider(wrapper) {
                 const segEnd = labels[segIndex + 1] ?? 1;
                 const segLen = segEnd - segStart;
 
+                // Does THIS slide have a text reveal?
                 const hasTextReveal = !!slides[segIndex].querySelector(".n_text-reveal-section");
                 const isAccordion = !!slides[segIndex].querySelector(".n_scroll-accordion");
+
                 const isSpecialSlide = hasTextReveal || isAccordion;
 
-                // NORMAL SLIDES
+                // ─────────────────────────────────────
+                // CASE 1: Normal slide -> normal snapping
+                // ─────────────────────────────────────
                 if (!isSpecialSlide) {
-                    const GLOBAL_THRESHOLD = 0.08;
+                    const GLOBAL_THRESHOLD = 0.08; // 8% of total
 
+                    // Nearest label to current progress
                     let closest = labels[0];
                     labels.forEach((p) => {
                         if (Math.abs(p - rawProgress) < Math.abs(closest - rawProgress)) {
@@ -1392,6 +1400,7 @@ function setupPageSlider(wrapper) {
                         }
                     });
 
+                    // Only snap if reasonably close
                     if (Math.abs(closest - rawProgress) < GLOBAL_THRESHOLD) {
                         return closest;
                     }
@@ -1399,108 +1408,33 @@ function setupPageSlider(wrapper) {
                     return rawProgress;
                 }
 
-                // TEXT-REVEAL / ACCORDION SLIDES: only snap near edges
-                const EDGE_PORTION = 0.2;
+                // ─────────────────────────────────────
+                // CASE 2: Slide WITH text reveal
+                // Only snap near edges, not in the middle
+                // ─────────────────────────────────────
+                const EDGE_PORTION = 0.2; // 20% of this slide's segment per side
 
                 const leftSnapEnd = segStart + segLen * EDGE_PORTION;
                 const rightSnapStart = segEnd - segLen * EDGE_PORTION;
 
+                // Middle 60% of this slide => NO snapping at all
                 if (rawProgress > leftSnapEnd && rawProgress < rightSnapStart) {
                     return rawProgress;
                 }
 
+                // Near edges -> snap to THIS slide's start or end
                 const distToStart = Math.abs(rawProgress - segStart);
                 const distToEnd = Math.abs(rawProgress - segEnd);
                 const target = distToStart < distToEnd ? segStart : segEnd;
 
-                const LOCAL_THRESHOLD = segLen * 0.4;
+                // Optional local guard: don't snap from super far away
+                const LOCAL_THRESHOLD = segLen * 0.4; // up to 40% of this segment
                 if (Math.abs(rawProgress - target) < LOCAL_THRESHOLD) {
                     return target;
                 }
 
                 return rawProgress;
             },
-            // snap: (rawProgress) => {
-            //     // Build normalized label positions once
-            //     if (!tl._labelProgress) {
-            //         tl._labelProgress = slides
-            //             .map((_, i) => {
-            //                 const t = tl.labels[`slide-${i}`];
-            //                 return t / tl.duration(); // 0–1
-            //             })
-            //             .sort((a, b) => a - b);
-            //     }
-
-            //     const labels = tl._labelProgress;
-
-            //     // Find which segment (slide) we're in: [labels[i], labels[i+1]]
-            //     let segIndex = 0;
-            //     for (let i = 0; i < labels.length - 1; i++) {
-            //         if (rawProgress >= labels[i] && rawProgress < labels[i + 1]) {
-            //             segIndex = i;
-            //             break;
-            //         }
-            //     }
-
-            //     const segStart = labels[segIndex];
-            //     const segEnd = labels[segIndex + 1] ?? 1;
-            //     const segLen = segEnd - segStart;
-
-            //     // Does THIS slide have a text reveal?
-            //     const hasTextReveal = !!slides[segIndex].querySelector(".n_text-reveal-section");
-            //     const isAccordion = !!slides[segIndex].querySelector(".n_scroll-accordion");
-
-            //     const isSpecialSlide = hasTextReveal || isAccordion;
-
-            //     // ─────────────────────────────────────
-            //     // CASE 1: Normal slide -> normal snapping
-            //     // ─────────────────────────────────────
-            //     if (!isSpecialSlide) {
-            //         const GLOBAL_THRESHOLD = 0.08; // 8% of total
-
-            //         // Nearest label to current progress
-            //         let closest = labels[0];
-            //         labels.forEach((p) => {
-            //             if (Math.abs(p - rawProgress) < Math.abs(closest - rawProgress)) {
-            //                 closest = p;
-            //             }
-            //         });
-
-            //         // Only snap if reasonably close
-            //         if (Math.abs(closest - rawProgress) < GLOBAL_THRESHOLD) {
-            //             return closest;
-            //         }
-
-            //         return rawProgress;
-            //     }
-
-            //     // ─────────────────────────────────────
-            //     // CASE 2: Slide WITH text reveal
-            //     // Only snap near edges, not in the middle
-            //     // ─────────────────────────────────────
-            //     const EDGE_PORTION = 0.2; // 20% of this slide's segment per side
-
-            //     const leftSnapEnd = segStart + segLen * EDGE_PORTION;
-            //     const rightSnapStart = segEnd - segLen * EDGE_PORTION;
-
-            //     // Middle 60% of this slide => NO snapping at all
-            //     if (rawProgress > leftSnapEnd && rawProgress < rightSnapStart) {
-            //         return rawProgress;
-            //     }
-
-            //     // Near edges -> snap to THIS slide's start or end
-            //     const distToStart = Math.abs(rawProgress - segStart);
-            //     const distToEnd = Math.abs(rawProgress - segEnd);
-            //     const target = distToStart < distToEnd ? segStart : segEnd;
-
-            //     // Optional local guard: don't snap from super far away
-            //     const LOCAL_THRESHOLD = segLen * 0.4; // up to 40% of this segment
-            //     if (Math.abs(rawProgress - target) < LOCAL_THRESHOLD) {
-            //         return target;
-            //     }
-
-            //     return rawProgress;
-            // },
 
             id: "page-slider",
             onComplete: () => {}
@@ -1514,8 +1448,7 @@ function setupPageSlider(wrapper) {
         const isPageHeader = textReveal && textReveal.getAttribute("element") === "page-header";
         const sectionHeader = slide.querySelector(".n_section-header");
         const fadeUps = slide.querySelectorAll(".slide-fade-up");
-        const scrollAccordionEl = slide.querySelector(".n_scroll-accordion");
-        const fansSection = slide.querySelector(".section-fans");
+        let scrollAccordionEl = slide.querySelector(".n_scroll-accordion");
 
         const label = `slide-${i}`;
         tl.addLabel(label);
@@ -1523,7 +1456,7 @@ function setupPageSlider(wrapper) {
         // check if is page header which is inside a text reveal
         if (isPageHeader) {
             const pageHeaderAni = setupPageHeaderAni(wrapper, tl);
-            // this fades the initial video out
+            // this fades the initial video out 
             // add to the beginning of the slide timeline
             tl.add(pageHeaderAni, ">");
         }
@@ -1538,28 +1471,7 @@ function setupPageSlider(wrapper) {
                 duration: 4,
                 ease: "power4.inOut"
             });
-             // 3) pull the new container in from below
-            tl.fromTo(
-                slide,
-                { yPercent: 100 },
-                { yPercent: 0, ease: "power4.inOut", duration: 4 },
-                label
-            );            
         }
-
-        const slideInPlaceLabel = `${label}-in-place`;
-
-        if(i > 0){
-            tl.addLabel(slideInPlaceLabel, `>`);
-        } else {
-            // first slide is already in view, so content can start at the slide label
-            tl.add(slideInPlaceLabel, label);
-        }
-
-       
-        // if (i > 0) {
-
-        // }
 
         // additional animations can be added here
         if (textReveal) {
@@ -1567,16 +1479,22 @@ function setupPageSlider(wrapper) {
             const textRevealTl = setupSliderTextReveal(slide, tl, isPageHeader);
             // textRevealTl.duration(SLIDE_DURATION * 0.8);
             // console.log(textRevealTl);
-            const SLIDE_TRANSITION_DURATION = i > 0 ? 4 : 0;
-            const TEXT_REVEAL_OFFSET = SLIDE_TRANSITION_DURATION + 0.2; // start animation at either 4s or 0s + .2s depending on if
-
-            // tl.add(textRevealTl, label + "+=0.2"); // .2s delay after slide in
-            tl.add(textRevealTl, `${label}+=${TEXT_REVEAL_OFFSET}`);
+            tl.add(textRevealTl, label + "+=0.2"); // .2s delay after slide in
             console.log("text reveal duration:", textRevealTl.duration());
         }
 
         if (isPageHeader) {
             addPageHeaderAnimation(tl, wrapper, label);
+        }
+
+        // 3) pull the new container in from below
+        if (i > 0) {
+            tl.fromTo(
+                slide,
+                { yPercent: 100 },
+                { yPercent: 0, ease: "power4.inOut", duration: 4 },
+                label
+            );
         }
 
         // section header animation
@@ -1595,15 +1513,6 @@ function setupPageSlider(wrapper) {
             addDotAnimation(dotWrapper, tl, label, 3.7);
         }
 
-        // 0439 11.21.25 not sure i like this and text reveal offset. it feels dangerous bc they could overlap instead of sequencing properly
-        // fans section animation
-        if (fansSection) {
-            const SLIDE_TRANSITION_DURATION = i > 0 ? 4 : 0;
-            // const LOTTIE_OFFSET = SLIDE_TRANSITION_DURATION + 0.2;
-            const LOTTIE_OFFSET = 0.2;
-            setupFanSansLottie(slide, tl, label, LOTTIE_OFFSET);
-        }
-
         if (scrollAccordionEl) {
             // initialize scroll accordion inside the slide
             addScrollAccordionAnimation(scrollAccordionEl, tl, label, 1);
@@ -1616,128 +1525,7 @@ function initPageSlider() {
     gsap.utils.toArray(".slider-wrapper").forEach(setupPageSlider);
 }
 
-function setupFanSansLottie(slide, tl, label, offsetSeconds = 0) {
-    const section = slide.matches(".section-fans") ? slide : slide.querySelector(".section-fans");
-    if (!section) return;
 
-    const lottieContainer = section.querySelector(".section-fans__side--lottie");
-    const textWrapper = section.querySelector(".section-fans__text-wrapper");
-    const textBlocks = section.querySelectorAll(".section-fans__text");
-    const backgroundDivs = section.querySelectorAll(".section-fans__background-block");
-
-    if (!lottieContainer || !textWrapper || !textBlocks.length) return;
-
-    let currentFrame = 0;
-    let lastActiveIndex = -1;
-    let bgRevealed = false;
-
-    let accessibleFrame = section.querySelector(".section-fans__text").dataset.frame;
-
-    setMinHeight(textWrapper, textBlocks);
-    window.addEventListener("resize", () => {
-        setMinHeight(textWrapper, textBlocks);
-    });
-
-    gsap.set(backgroundDivs, { opacity: 0 });
-
-    textBlocks.forEach((block) => {
-        gsap.set(block, {
-            y: 100,
-            opacity: 0,
-            immediateRender: false
-        });
-    });
-
-    const lottieAnimation = lottie.loadAnimation({
-        container: lottieContainer,
-        renderer: "svg",
-        loop: false,
-        autoplay: false,
-        path: "https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/685456f50615bd9f4e88f274_FanSans_Animation3_cleaned.json"
-    });
-
-    // fix blinking issue
-    lottieAnimation.addEventListener("data_ready", () => {
-        lottieAnimation.setSubframe(false);
-    });
-
-    // 1. Trigger text changes based on frame (same logic as before)
-    const frameTriggers = Array.from(textBlocks).map((el, index) => ({
-        frame: parseInt(el.dataset.frame, 10),
-        el,
-        index
-    }));
-
-    let currentTextBlock = null;
-
-    lottieAnimation.addEventListener("enterFrame", (e) => {
-        currentFrame = e.currentTime;
-
-        if (currentFrame < parseInt(accessibleFrame, 10)) {
-            gsap.to(backgroundDivs, {
-                opacity: 0,
-                y: 20,
-                duration: 0.15,
-                ease: "power2.inOut"
-            });
-        }
-
-        const active = frameTriggers
-            .filter((trigger) => currentFrame >= trigger.frame)
-            .sort((a, b) => b.frame - a.frame)[0];
-
-        if (!active || active.index === lastActiveIndex) return;
-
-        lastActiveIndex = active.index;
-
-        if (currentTextBlock) currentTextBlock.kill();
-
-        textBlocks.forEach((el) => {
-            gsap.set(el, { opacity: 0 });
-        });
-
-        currentTextBlock = gsap.to(active.el, {
-            opacity: 1,
-            y: 0,
-            duration: 0.5,
-            ease: "power2.out"
-        });
-
-        if (!bgRevealed && currentFrame >= parseInt(accessibleFrame, 10)) {
-            bgRevealed = true;
-            gsap.fromTo(
-                backgroundDivs,
-                {
-                    width: "0%",
-                    transformOrigin: "center center"
-                },
-                {
-                    opacity: 1,
-                    width: "100%",
-                    duration: 1,
-                    ease: "power4.out"
-                }
-            );
-        }
-    });
-
-    // 2. When Lottie data is ready, wire it into the *slider timeline*
-    lottieAnimation.addEventListener("DOMLoaded", () => {
-        const totalFrames = lottieAnimation.totalFrames;
-
-        const lottieTween = gsap.to(lottieAnimation, {
-            frame: totalFrames - 1,
-            ease: "none",
-            duration: 5, // <<< how long you want within this slide
-            onUpdate() {
-                lottieAnimation.goToAndStop(lottieAnimation.frame, true);
-            }
-        });
-
-        // stick the tween into the main slider timeline at this slide's label
-        tl.add(lottieTween, `${label}+=${offsetSeconds}`);
-    });
-}
 
 function addPageHeaderAnimation(tl, wrapper, label) {
     let logoVideo = wrapper.querySelector(".n_bg-video--logo");
@@ -2097,6 +1885,7 @@ function setupSliderTextReveal(wrapper, tl, isPageHeader) {
 
             // 3) Build a mini‐timeline for “this one <h1>”.
             const wordAnim = createWordTimeline(words, endColor, block, isLastBlock, isLastHeading);
+            console.log(wordAnim)
 
             // 4) Add THAT entire mini-timeline into “tl” (so headings run in series, one after the other)
             tl.add(wordAnim);

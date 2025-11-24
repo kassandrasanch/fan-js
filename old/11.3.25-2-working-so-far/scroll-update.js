@@ -159,7 +159,7 @@ gsap.utils.toArray(sectionElements).forEach((pageSection, i) => {
         end: "bottom top",
         onEnter: () => goToSection(i),
         onEnterBack: () => goToSection(i),
-        // markers: true,
+        markers: true,
         refreshPriority: -1,
         onLeaveBack: () => {
             // console.log(`on onLeaveBack index ${i}`)
