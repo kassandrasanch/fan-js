@@ -327,23 +327,11 @@ function setupPageSlider(wrapper) {
                 // raw progress is 0 to 1 over entire timeline
                 // my function must return a number between 0 and 1
                 console.log(tl.labels);
-
-                const labelEntries = Object.entries(tl.labels);
-
-                const snapLabelEntries = labelEntries.filter(([name]) => /^slide-\d+$/.test(name));
                 // Rebuild normalized label positions on every call
-                const labels = snapLabelEntries
-                    .map(([_, time]) => time / tl.duration())
+                const labels = slides
+                    .map((_, i) => tl.labels[`slide-${i}`] / tl.duration())
                     .sort((a, b) => a - b);
 
-                console.log(
-                    "SNAP LABELS:",
-                    snapLabelEntries.map(([name, time]) => ({
-                        name,
-                        time,
-                        progress: Number((time / tl.duration()).toFixed(3))
-                    }))
-                );
                 // Find which segment (slide) we're in: [labels[i], labels[i+1]]
                 let segIndex = 0;
                 for (let i = 0; i < labels.length - 1; i++) {
@@ -361,17 +349,7 @@ function setupPageSlider(wrapper) {
                 // if current slide has text-reveal or scroll-accordion, treat as special
                 const hasTextReveal = !!slides[segIndex].querySelector(".n_text-reveal-section");
                 const isAccordion = !!slides[segIndex].querySelector(".n_scroll-accordion");
-                const isColorsSection = !!slides[segIndex].querySelector(".colors-wrapper");
-                const isFansSection = !!slides[segIndex].querySelector(".section-fans");
-                const rippleGradient =
-                    slides[segIndex].getAttribute("data-element") === "ripple-gradient";
-                const isBigSlider = !!slides[segIndex].querySelector(".n_big-slider_wrapper");
-                const isSpecialSlide =
-                    hasTextReveal ||
-                    isAccordion ||
-                    isColorsSection ||
-                    rippleGradient ||
-                    isFansSection || isBigSlider;
+                const isSpecialSlide = hasTextReveal || isAccordion;
 
                 // NORMAL SLIDES
                 if (!isSpecialSlide) {
@@ -392,11 +370,11 @@ function setupPageSlider(wrapper) {
                 }
 
                 // FOR SPECIAL SLIDES: only snap near edges
-                const EDGE_PORTION = 0.1;
+                const EDGE_PORTION = 0.2;
 
-                const leftSnapEnd = segStart + segLen * EDGE_PORTION; // first 10% of segment
-                const rightSnapStart = segEnd - segLen * EDGE_PORTION; // last 10% of segment
-                // middle 70% - no snapping
+                const leftSnapEnd = segStart + segLen * EDGE_PORTION; // first 20% of segment
+                const rightSnapStart = segEnd - segLen * EDGE_PORTION; // last 20% of segment
+                // middle 60% - no snapping
 
                 if (rawProgress > leftSnapEnd && rawProgress < rightSnapStart) {
                     return rawProgress;
@@ -427,8 +405,6 @@ function setupPageSlider(wrapper) {
         const fadeUps = slide.querySelectorAll(".slide-fade-up");
         const scrollAccordionEl = slide.querySelector(".n_scroll-accordion");
         const fansSection = slide.querySelector(".section-fans");
-        const colorsSection = slide.querySelector(".colors-wrapper");
-        const bigSliderWrapper = slide.querySelector(".n_big-slider_wrapper");
 
         const label = `slide-${i}`;
         tl.addLabel(label);
@@ -479,7 +455,7 @@ function setupPageSlider(wrapper) {
             const TEXT_REVEAL_OFFSET = SLIDE_TRANSITION_DURATION + 0.2; // start animation at either 4s or 0s + .2s depending on if
 
             // tl.add(textRevealTl, label + "+=0.2"); // .2s delay after slide in
-            tl.add(textRevealTl, `${slideInPlaceLabel}+=${TEXT_REVEAL_OFFSET}`);
+            tl.add(textRevealTl, `${label}+=${TEXT_REVEAL_OFFSET}`);
             // console.log("text reveal duration:", textRevealTl.duration());
         }
 
@@ -507,13 +483,13 @@ function setupPageSlider(wrapper) {
         }
 
         if (fansSection) {
-            console.log("FANS SECTION IN SLIDE", i);
+            console.log('FANS SECTION IN SLIDE', i);
             const LOTTIE_OFFSET = 0.2;
 
             // 1) hook Lottie to the content label for THIS slide
-            console.log("SETTING UP FANS LOTTIE");
+            console.log('SETTING UP FANS LOTTIE');
             setupFanSansLottie(slide, tl, slideInPlaceLabel, i, LOTTIE_OFFSET);
-            console.log("FANS LOTTIE SET UP");
+            console.log('FANS LOTTIE SET UP');
 
             // 2) ensure this slide's segment is long enough so Lottie isn't hyper-fast
             const FANS_MIN_SEGMENT = 10; // tweak this number to slow/speed Lottie
@@ -526,22 +502,11 @@ function setupPageSlider(wrapper) {
                 const pad = FANS_MIN_SEGMENT - currentLen;
                 tl.to({}, { duration: pad }); // dummy tween to extend this slide's window
             }
-        }
+        }        
 
         if (scrollAccordionEl) {
             // initialize scroll accordion inside the slide
             addScrollAccordionAnimation(scrollAccordionEl, tl, label, 1);
-        }
-
-        if (colorsSection) {
-            addColorPanelsAnimation(slide, tl, slideInPlaceLabel, 0.2);
-        }
-
-        if (bigSliderWrapper) {
-            const BIG_OFFSET = 0.2; // start slightly after slide is in place
-            const bigTl = createBigSliderTimeline(bigSliderWrapper);
-
-            tl.add(bigTl, `${slideInPlaceLabel}+=${BIG_OFFSET}`);
         }
     });
     GSDevTools.create({ animation: tl });
@@ -986,194 +951,6 @@ function resetAndPlay(vid) {
     }
 }
 
-function createVideoTextScrubTimeline(wrapper) {
-    const panels = gsap.utils.toArray(
-        wrapper.querySelectorAll(".ripple-gradient__bg-wrapper .ripple-gradient")
-    );
-    const total = panels.length;
-
-    gsap.set(panels, { xPercent: (i) => (i === 0 ? 0 : 100) });
-
-    const prevVid = panels[0]?.querySelector("video");
-    const curVid = panels[1]?.querySelector("video");
-    gsap.set([prevVid, curVid], { xPercent: 0 });
-
-    const video = wrapper.querySelector("video");
-    const blocks = gsap.utils.toArray(wrapper.querySelectorAll(".n_text-reveal__block"));
-    const totalBlocks = blocks.length;
-
-    if (video) {
-        video.preload = "metadata";
-        video.playsInline = true;
-        video.muted = true;
-    }
-
-    // NO scrollTrigger, NO paused
-    const videoTextTl = gsap.timeline({
-        defaults: { ease: "none" }
-    });
-
-    // --- introTl (first 2 blocks) ---
-    const introTl = gsap.timeline();
-    blocks.slice(0, 2).forEach((block, blkIdx) => {
-        const headings = block.querySelectorAll(".n_text-reveal__heading");
-        headings.forEach((h1, hIdx) => {
-            const words = splitTextIntoWords(h1);
-            prepareWords(words);
-            const isLastHeading = hIdx === headings.length - 1;
-            const isLastBlock = blkIdx === 1;
-            introTl.add(createWordTimeline(words, "#ffffff", block, isLastBlock, isLastHeading));
-        });
-    });
-
-    // --- videoTl (rest of blocks + ripple swap) ---
-    const videoTl = gsap.timeline();
-
-    blocks.slice(2).forEach((block, i) => {
-        const blockIndex = i + 2; // real index in `blocks`
-        const headings = block.querySelectorAll(".n_text-reveal__heading");
-
-        if (blockIndex === 2 && total >= 2) {
-            videoTl.addLabel("rippleSwap");
-
-            videoTl.to(
-                panels[0],
-                {
-                    xPercent: -100,
-                    duration: 1,
-                    ease: "power4.inOut"
-                },
-                "rippleSwap"
-            );
-
-            videoTl.fromTo(
-                panels[1],
-                { xPercent: 100 },
-                {
-                    xPercent: 0,
-                    duration: 1,
-                    ease: "power4.inOut"
-                },
-                "rippleSwap"
-            );
-
-            if (prevVid) {
-                videoTl.to(
-                    prevVid,
-                    {
-                        xPercent: 50,
-                        duration: 1,
-                        ease: "power4.inOut"
-                    },
-                    "rippleSwap"
-                );
-            }
-            if (curVid) {
-                videoTl.fromTo(
-                    curVid,
-                    { xPercent: -50 },
-                    {
-                        xPercent: 0,
-                        duration: 1,
-                        ease: "power4.inOut"
-                    },
-                    "rippleSwap"
-                );
-            }
-        }
-
-        headings.forEach((h1, headingIndex) => {
-            const words = splitTextIntoWords(h1);
-            prepareWords(words);
-            const isLastBlock = blockIndex === totalBlocks - 1;
-            const isLastHeading = headingIndex === headings.length - 1;
-            const passLastHeading = isLastHeading && !isLastBlock;
-
-            const wordAnim = createWordTimeline(
-                words,
-                "#ffffff",
-                block,
-                isLastBlock,
-                passLastHeading
-            );
-
-            videoTl.add(wordAnim);
-        });
-    });
-
-    videoTextTl.add(introTl);
-    videoTextTl.add(videoTl);
-
-    // if you want it slower than the original scroll version:
-    // comment out if too slow.
-    videoTextTl.timeScale(0.9);
-
-    return videoTextTl;
-}
-
-function createBigSliderTimeline(wrapper) {
-    // each “panel” is the .n_big-slide element
-    const panels = gsap.utils.toArray(wrapper.querySelectorAll(".n_big-slide"));
-    const total = panels.length;
-    if (!total) return gsap.timeline(); // safety
-
-    // inside each panel we’ll animate the image
-    const imgs = panels.map((p) => p.querySelector(".n_big-slide_img"));
-
-    // initial positions (match scroll version behavior)
-    panels.forEach((panel, i) => {
-        gsap.set(panel, { xPercent: i === 0 ? 0 : 100 });
-    });
-    imgs.forEach((img, i) => {
-        if (!img) return;
-        gsap.set(img, { xPercent: i === 0 ? 0 : -100 });
-    });
-
-    // pure timeline, NO scrollTrigger
-    const tl = gsap.timeline({
-        defaults: { ease: "power4.inOut" }
-    });
-
-    panels.forEach((panel, i) => {
-        if (i === 0) return; // first is already in view
-
-        const prev = panels[i - 1];
-        const prevImg = imgs[i - 1];
-        const curImg = imgs[i];
-
-        // 1) slide the old container out to the left
-        tl.to(prev, {
-            xPercent: -100,
-            duration: 1
-        });
-
-        // 2) push that old image out to the right
-        if (prevImg) {
-            tl.to(
-                prevImg,
-                {
-                    xPercent: 100,
-                    duration: 1
-                },
-                "<"
-            );
-        }
-
-        // 3) pull the new container in from the right
-        tl.fromTo(panel, { xPercent: 100 }, { xPercent: 0, duration: 1 }, "<");
-
-        // 4) pull its image in from the left
-        if (curImg) {
-            tl.fromTo(curImg, { xPercent: -100 }, { xPercent: 0, duration: 1 }, "<");
-        }
-    });
-
-    // optional: slow the whole thing down
-    tl.timeScale(0.2);
-
-    return tl;
-}
-
 function animateAnton(block) {
     let antonTl = gsap.timeline();
 
@@ -1267,286 +1044,6 @@ function animateAnton(block) {
     });
 
     return antonTl;
-}
-
-function animateInstrument(block) {
-    const heading = block.querySelector(".n_text-reveal__heading");
-    const specialContainer = block.querySelector(".n_text-reveal__special");
-    const lottieEl = block.querySelector("#instrument-lottie"); // Renamed to avoid confusion
-    const path = lottieEl.getAttribute("data-src");
-
-    const words = splitTextIntoWords(heading);
-
-    let instrumentTl = gsap.timeline();
-
-    instrumentTl.add(prepareWords(words));
-
-    gsap.set(specialContainer, {
-        yPercent: 100,
-        opacity: 0
-    });
-
-    instrumentTl.to(specialContainer, {
-        yPercent: 0,
-        opacity: 1
-    });
-
-    instrumentTl.add(animateWordsIn(words, "#ffffff"));
-
-    instrumentTl.add(animateWordsOut(words));
-
-    instrumentTl.to(specialContainer, {
-        yPercent: 100,
-        opacity: 0,
-        duration: 0.8,
-        ease: "power3.inOut"
-    });
-    instrumentTl.call(() => {
-        block.classList.remove("active");
-        block.style.zIndex = "0";
-    });
-
-    return instrumentTl;
-}
-
-function animateInter(block) {
-    const heading = block.querySelector(".n_text-reveal__heading");
-    const specialContainer = block.querySelector(".n_text-reveal__special");
-
-    const words = splitTextIntoWords(heading);
-    prepareWords(words);
-
-    let interTl = gsap.timeline();
-
-    gsap.set(specialContainer, {
-        yPercent: 100,
-        opacity: 0
-    });
-
-    interTl.to(specialContainer, {
-        yPercent: 0,
-        opacity: 1
-    });
-
-    interTl.add(animateWordsIn(words, "#ffffff"));
-
-    interTl.add(animateWordsOut(words));
-
-    interTl.to(specialContainer, {
-        yPercent: 100,
-        opacity: 0,
-        duration: 0.8,
-        ease: "power3.inOut"
-    });
-
-    interTl.call(() => {
-        block.classList.remove("active");
-        block.style.zIndex = "0";
-    });
-
-    return interTl;
-}
-
-function animateBk(block) {
-    const heading = block.querySelector(".n_text-reveal__heading");
-
-    const words = splitTextIntoWords(heading);
-
-    let specialTl = gsap.timeline();
-
-    specialTl.add(prepareWords(words));
-
-    specialTl.to(
-        block.closest(".n_text-reveal-section"),
-        {
-            background: "white",
-            duration: 1
-        }, // zero-duration set immediately
-        0 // position: at the very start of this block’s mini-timeline
-    );
-
-    specialTl.add(animateWordsIn(words, "#000000"));
-
-    specialTl.add(animateWordsOut(words));
-
-    specialTl.call(() => {
-        block.classList.remove("active");
-        block.style.zIndex = "0";
-    });
-
-    return specialTl;
-}
-
-function animateLikeThis(block, wrapper) {
-    const heading = block.querySelector(".n_text-reveal__heading");
-
-    const words = splitTextIntoWords(heading);
-
-    const extra = wrapper.querySelector(".special__split");
-    const typographyFans = wrapper.querySelector(".special__typography-fans");
-
-    gsap.set(extra, {
-        opacity: 0,
-        zIndex: -4
-    });
-
-    gsap.set(typographyFans, {
-        zIndex: -4,
-        clipPath: "inset(0% 100% 0% 0%)"
-    });
-
-    gsap.set(extra.querySelector(".special__split-row--top"), {
-        xPercent: -50
-    });
-    gsap.set(extra.querySelector(".special__split-row--bottom"), {
-        xPercent: 50
-    });
-    // let
-
-    let specialTl = gsap.timeline();
-
-    specialTl.add(prepareWords(words));
-
-    specialTl.to(extra, {
-        opacity: 1,
-        zIndex: 2
-    });
-    specialTl.to(extra.querySelector(".special__split-row--bottom"), {
-        xPercent: 0,
-        duration: 2
-    });
-    specialTl.to(
-        extra.querySelector(".special__split-row--top"),
-        {
-            xPercent: 0,
-            duration: 2
-        },
-        "<"
-    );
-
-    specialTl.to(extra, {
-        duration: 1
-    });
-    specialTl.to(extra.querySelector(".special__split-row--bottom"), {
-        xPercent: -100,
-        duration: 1
-    });
-    specialTl.to(
-        extra.querySelector(".special__split-row--top"),
-        {
-            xPercent: 100,
-            duration: 1
-        },
-        "<"
-    );
-    specialTl.set(extra, {
-        opacity: 0,
-        zIndex: -4
-    });
-
-    specialTl.add(animateWordsIn(words, "#000000"));
-
-    specialTl.add(animateWordsOut(words));
-
-    specialTl.to(typographyFans, {
-        clipPath: "inset(0% 0% 0% 0%)",
-        zIndex: 3,
-        duration: 1
-    });
-
-    specialTl.call(() => {
-        block.classList.remove("active");
-        block.style.zIndex = "0";
-    });
-
-    return specialTl;
-}
-
-function addColorPanelsAnimation(slide, masterTl, label, offset = 0.2) {
-    // match old selector semantics, just scoped to this slide
-    const panels = gsap.utils.toArray(slide.querySelectorAll(".color-panel"));
-
-    if (!panels.length) return;
-
-    // === same logic as old updateActivePanel ===
-    function updateActivePanel(progress) {
-        let activeIndex = Math.round(progress * panels.length - 0.5);
-
-        // Ensure the last panel stays active at the end
-        if (activeIndex >= panels.length - 1) {
-            activeIndex = panels.length - 1; // Keep last panel active
-        }
-
-        panels.forEach((panel, index) => {
-            if (index === activeIndex) {
-                panel.classList.add("active");
-            } else {
-                panel.classList.remove("active");
-            }
-        });
-    }
-
-    // build local timeline, then wire onUpdate (so we can reference localTl)
-    const localTl = gsap.timeline();
-
-    localTl.eventCallback("onUpdate", () => {
-        updateActivePanel(localTl.progress());
-    });
-
-    // === same tween structure as OLD initColorPanels ===
-    panels.forEach((panel, index) => {
-        const isLast = index === panels.length - 1;
-        const nextPanel = isLast ? null : panels[index + 1];
-        const currentContent = panel.querySelector(".colors-content");
-        const nextContent = nextPanel ? nextPanel.querySelector(".colors-content") : null;
-
-        if (!isLast) {
-            // content clip
-            localTl.to(currentContent, {
-                clipPath: "inset(0 100% 0 0)", // from fully visible to clipped
-                duration: 0.2, // same as old
-                ease: "expo.inOut"
-            });
-
-            // shrink current panel (no explicit duration in old => 0.5 default)
-            localTl.to(panel, {
-                width: "5%",
-                ease: "expo.out"
-            });
-
-            // grow next panel
-            localTl.to(
-                nextPanel,
-                {
-                    width: "100%", // Expand next panel
-                    ease: "expo.out",
-                    onStart: () => {
-                        nextPanel.classList.add("active");
-                        if (nextContent) {
-                            // currentContent.classList.remove("hide");
-                            // nextContent.classList.add("show");
-                        }
-                    }
-                },
-                "<" // sync like old
-            );
-        } else {
-            // last panel
-            localTl.to(panel, {
-                width: "100%",
-                duration: 0.5, // same as old
-                ease: "expo.inOut"
-            });
-        }
-    });
-
-    // === globally slow the old behavior down ===
-    // 0.3 = ~3.3x slower; tweak to taste (0.5 = 2x slower, 0.2 = 5x slower)
-    // 0439 LOVE time scale
-    localTl.timeScale(0.3);
-
-    // plug into master slider tl
-    masterTl.add(localTl, `${label}+=${offset}`);
 }
 
 // 1 FIND TEXT REVEAL SECTIONS
@@ -1861,12 +1358,8 @@ function setupPageHeaderAni(wrapper, tl) {
 // TEXT REVEAL IN SLIDER
 function setupSliderTextReveal(wrapper, tl, isPageHeader) {
     const allHeadings = wrapper.querySelectorAll(".n_text-reveal__heading");
-    const isRippleGradient = wrapper.getAttribute("data-element") === "ripple-gradient";
 
-    if (isRippleGradient) {
-        // build the special video/text TL instead of normal text reveal
-        return createVideoTextScrubTimeline(wrapper);
-    }
+    // console.log(wrapper);
 
     const endColor = wrapper.dataset.endColor || "#ffffff";
     const blocks = gsap.utils.toArray(
@@ -1876,6 +1369,12 @@ function setupSliderTextReveal(wrapper, tl, isPageHeader) {
     const masterTl = gsap.timeline({});
 
     let words;
+
+    // duplicate
+    // allHeadings.forEach((heading) => {
+    //     words = splitTextIntoWords(heading);
+    //     prepareWords(words);
+    // });
 
     blocks.forEach((block, i) => {
         const hasLogos = block.classList.contains("n_logo-reveal__block");
@@ -1912,39 +1411,6 @@ function setupSliderTextReveal(wrapper, tl, isPageHeader) {
         //     masterTl.add(tl);
         //     return;
         // }
-
-        if (block.dataset.animateSpecial === "anton") {
-            masterTl.add(animateAnton(block));
-            return;
-        }
-
-        if (block.dataset.animateSpecial === "instrument") {
-            masterTl.add(animateInstrument(block, wrapper));
-            return;
-        }
-
-        if (block.dataset.animateSpecial === "inter") {
-            masterTl.add(animateInter(block, wrapper));
-            return;
-        }
-
-        if (block.dataset.animateSpecial === "bk-switch--white") {
-            let specialTl = animateBk(block);
-            masterTl.add(specialTl);
-            return;
-        }
-
-        if (block.dataset.animateSpecial === "like-this") {
-            masterTl.add(animateLikeThis(block, wrapper));
-            return;
-        }
-
-        // check for special cases
-        if (block.dataset.animateSpecial === "logomark") {
-            let specialTl = animateLogoMark(block, wrapper);
-            masterTl.add(specialTl);
-            return;
-        }
 
         headings.forEach((h1, headingIndex) => {
             // 1) Split the text into individual <span class="text-reveal__word">…</span>
