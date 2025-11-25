@@ -366,12 +366,15 @@ function setupPageSlider(wrapper) {
                 const rippleGradient =
                     slides[segIndex].getAttribute("data-element") === "ripple-gradient";
                 const isBigSlider = !!slides[segIndex].querySelector(".n_big-slider_wrapper");
+                const isStackedSlider = !!slides[segIndex].querySelector(".n_stacked-slider");
                 const isSpecialSlide =
                     hasTextReveal ||
                     isAccordion ||
                     isColorsSection ||
                     rippleGradient ||
-                    isFansSection || isBigSlider;
+                    isFansSection ||
+                    isBigSlider ||
+                    isStackedSlider;
 
                 // NORMAL SLIDES
                 if (!isSpecialSlide) {
@@ -429,6 +432,8 @@ function setupPageSlider(wrapper) {
         const fansSection = slide.querySelector(".section-fans");
         const colorsSection = slide.querySelector(".colors-wrapper");
         const bigSliderWrapper = slide.querySelector(".n_big-slider_wrapper");
+        const stackedSliderWrapper = slide.querySelector(".n_stacked-slider");
+        const counterEl = slide.querySelector(".section-banner__counter");
 
         const label = `slide-${i}`;
         tl.addLabel(label);
@@ -543,8 +548,29 @@ function setupPageSlider(wrapper) {
 
             tl.add(bigTl, `${slideInPlaceLabel}+=${BIG_OFFSET}`);
         }
+
+        if (stackedSliderWrapper) {
+            const STACKED_OFFSET = 0.2; // or whatever feels best
+            const stackedTl = createStackedSliderTimeline(stackedSliderWrapper);
+
+            tl.add(stackedTl, `${slideInPlaceLabel}+=${STACKED_OFFSET}`);
+        }
+        if (counterEl) {
+            console.log("counter found in slide", i);
+            const startFn = createCounterStartFn(slide);
+
+            // Trigger the counter as soon as the slide is “in place”
+            tl.add(() => {
+                startFn();
+            }, `${slideInPlaceLabel}+=0.2`);
+
+            // OPTIONAL: stop it when exiting the slide window
+            // tl.add(() => {
+            //     clearInterval(counterInterval);
+            // }, `${slideInPlaceLabel}+=5`); // change 5 to however long the window is
+        }
     });
-    GSDevTools.create({ animation: tl });
+    // GSDevTools.create({ animation: tl });
 }
 
 function initPageSlider() {
@@ -1111,6 +1137,140 @@ function createVideoTextScrubTimeline(wrapper) {
     return videoTextTl;
 }
 
+function createStackedSliderTimeline(slider) {
+    const slides = gsap.utils.toArray(slider.querySelectorAll(".n_stacked-slide"));
+    const total = slides.length;
+    if (!total) return gsap.timeline(); // safety
+
+    const imgs = slides.map((s) => s.querySelector("img"));
+
+    // initial positions
+    slides.forEach((slide, i) => {
+        if (i === 0) {
+            gsap.set(slide, { xPercent: 0 });
+        } else {
+            gsap.set(slide, { xPercent: 100 });
+        }
+    });
+
+    imgs.forEach((img, i) => {
+        if (!img) return;
+        if (i === 0) {
+            gsap.set(img, { xPercent: 0 });
+        } else {
+            gsap.set(img, { xPercent: -100 });
+        }
+    });
+
+    const tl = gsap.timeline({
+        defaults: {
+            duration: 1.5,
+            ease: "power4.inOut"
+        }
+    });
+
+    slides.forEach((slide, i) => {
+        if (i === 0) return; // first slide is our starting point
+
+        const prev = slides[i - 1];
+        const prevImg = imgs[i - 1];
+        const curImg = imgs[i];
+
+        // 1) slide the old container out to the left
+        tl.to(prev, {
+            xPercent: -100
+        });
+
+        // 2) push that old image out to the right
+        if (prevImg) {
+            tl.to(
+                prevImg,
+                {
+                    xPercent: 100
+                },
+                "<"
+            );
+        }
+
+        // 3) pull the new container in from the right
+        tl.fromTo(slide, { xPercent: 100 }, { xPercent: 0 }, "<");
+
+        // 4) pull its image in from the left
+        if (curImg) {
+            tl.fromTo(curImg, { xPercent: -100 }, { xPercent: 0 }, "<");
+        }
+    });
+    tl.timeScale(0.2);
+    return tl;
+}
+
+function initScrollingSlider() {
+    const sliderSection = document.querySelector(".n_scrolling-slider");
+    const slidesContainer = sliderSection.querySelector(".scrolling-slider__track");
+    const slides = gsap.utils.toArray(slidesContainer.querySelectorAll(".scrolling-slider__slide"));
+    const sliderHeaderWrap = sliderSection.querySelector(".scrolling-slider__intro");
+
+    // calculate widths
+    const totalWidth = slidesContainer.scrollWidth;
+    const visibleWidth = sliderSection.clientWidth; // includes any padding
+    const scrollDist = totalWidth - visibleWidth + 200; // how far we actually need to move
+
+    // 1 initial states
+    gsap.set(slides, { opacity: 0.5 });
+    // gsap.set(sliderHeaderWrap, { yPercent: 100, opacity: 0 });
+
+    // 2 scrubbed, pinned timeline
+    const tl = gsap.timeline({
+        scrollTrigger: {
+            trigger: sliderSection,
+            start: "top top",
+            end: `+=${scrollDist * 3}`, // twice the distance for more scrolls
+            pin: true,
+            scrub: 3,
+            invalidateOnRefresh: true
+            // markers: true
+        }
+    });
+
+    // ) header reveal (outside of the scrub timeline)
+    // gsap.to(sliderHeaderWrap, {
+
+    //   opacity: 1,
+    //   duration: 1.2,
+    //   ease: 'power4.out',
+    //   delay: 0.15
+    // });
+
+    // 4 fade in all slides once we start scrolling
+    tl.to(
+        slides,
+        {
+            opacity: 1,
+            duration: 1.5,
+            stagger: 0.3,
+            ease: "power2.out"
+        },
+        "<"
+    );
+
+    // 5  slide the track left by exactly scrollDist
+    tl.to(
+        slidesContainer,
+        {
+            x: -scrollDist,
+            duration: slides.length * 1.8, // stretch this out proportional to # of slides
+            ease: "power1.inOut"
+        },
+        "<"
+    );
+
+    // 6 unpin
+    tl.to(sliderSection, {
+        opacity: 1,
+        duration: 0.8
+    });
+}
+
 function createBigSliderTimeline(wrapper) {
     // each “panel” is the .n_big-slide element
     const panels = gsap.utils.toArray(wrapper.querySelectorAll(".n_big-slide"));
@@ -1144,7 +1304,7 @@ function createBigSliderTimeline(wrapper) {
         // 1) slide the old container out to the left
         tl.to(prev, {
             xPercent: -100,
-            duration: 1
+            duration: 1.5
         });
 
         // 2) push that old image out to the right
@@ -1153,7 +1313,7 @@ function createBigSliderTimeline(wrapper) {
                 prevImg,
                 {
                     xPercent: 100,
-                    duration: 1
+                    duration: 1.5
                 },
                 "<"
             );
@@ -1170,6 +1330,85 @@ function createBigSliderTimeline(wrapper) {
 
     // optional: slow the whole thing down
     tl.timeScale(0.2);
+
+    return tl;
+}
+
+let counterInterval;
+
+function createCounterStartFn(slide) {
+    console.log("createCounterStartFn called for slide:", slide);
+    return function start() {
+        const el = slide.querySelector(".section-banner__counter .counter-text");
+        if (!el) return;
+
+        const from = 999_899;
+        const to = 999_999_999;
+        const tickMs = 30;
+
+        let val = from;
+        clearInterval(counterInterval);
+
+        el.textContent = val.toLocaleString();
+
+        counterInterval = setInterval(() => {
+            if (val >= to) {
+                clearInterval(counterInterval);
+                return;
+            }
+            val += 1;
+            el.textContent = val.toLocaleString();
+        }, tickMs);
+    };
+}
+
+function createScrollingSliderTimeline(sliderSection) {
+    const slidesContainer = sliderSection.querySelector(".scrolling-slider__track");
+    const slides = gsap.utils.toArray(slidesContainer.querySelectorAll(".scrolling-slider__slide"));
+    const sliderHeaderWrap = sliderSection.querySelector(".scrolling-slider__intro");
+
+    if (!slides.length || !slidesContainer) {
+        return gsap.timeline(); // safety
+    }
+
+    // measure layout
+    const totalWidth = slidesContainer.scrollWidth;
+    const visibleWidth = sliderSection.clientWidth;
+    const scrollDist = Math.max(totalWidth - visibleWidth + 200, 0);
+
+    // initial states
+    gsap.set(slides, { opacity: 0.5 });
+    // if you want header anim as part of this tl, uncomment and tweak:
+    // gsap.set(sliderHeaderWrap, { yPercent: 100, opacity: 0 });
+
+    const tl = gsap.timeline();
+
+    // fade in slides
+    tl.to(slides, {
+        opacity: 1,
+        duration: 1.5,
+        stagger: 0.3,
+        ease: "power2.out"
+    });
+
+    // horizontal scroll of the track if there's anything to scroll
+    if (scrollDist > 0) {
+        tl.to(
+            slidesContainer,
+            {
+                x: -scrollDist,
+                duration: slides.length * 1.8,
+                ease: "power1.inOut"
+            },
+            "<"
+        );
+    }
+
+    // optional: small tail at the end if you want breathing room
+    tl.to(sliderSection, {
+        opacity: 1,
+        duration: 0.8
+    });
 
     return tl;
 }
@@ -2130,6 +2369,43 @@ function animateLogoMark(block, wrapper) {
     // return;
 }
 
+gsap.utils.toArray(".section-fade-up").forEach((section) => {
+    // console.log(section)
+    let parentBanner = section.closest(".section-banner");
+    let hasParentBanner = parentBanner ? true : false;
+    // console.log(`hasParentBanner: ${hasParentBanner}`);
+    // if (parentBanner) {
+    //   console.log('has parentBanner')
+
+    //   console.log(parentBanner)
+
+    // } else {
+    //   console.log(`no parent banner`)
+    // }
+    // console.log(hasParentBanner)
+    let startFrom = hasParentBanner ? "top 10%" : "top top";
+    let toggleAct = hasParentBanner ? "play reverse play reverse" : "play none play complete";
+    gsap.fromTo(
+        section,
+        { opacity: 0, y: 50 }, // start
+        {
+            opacity: 1,
+            y: 0,
+            duration: 0.5,
+            ease: "power2.out",
+            scrollTrigger: {
+                trigger: hasParentBanner ? parentBanner : section,
+                // start: "top 80%", // reveal when near 80% viewport
+                start: startFrom,
+                // toggleActions: "play none play complete",
+                toggleActions: toggleAct,
+                markers: true
+                // scrub: true
+            }
+        }
+    );
+});
+
 function waitForFonts(timeout = 5000) {
     if (!document.fonts || document.fonts.status === "loaded") return Promise.resolve();
     return Promise.race([
@@ -2165,7 +2441,7 @@ async function init() {
     await waitForVideos();
 
     initPageSlider();
-
+    initScrollingSlider();
     // Display the body
     document.querySelector("body").style.display = "block";
 

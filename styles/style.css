@@ -3,7 +3,9 @@
 /*}*/
 
 /*data-lenis-prevent*/
-
+*{
+    box-sizing: border-box;
+}
 body {
     max-width: 100vw;
     overflow-x: hidden;
@@ -503,11 +505,12 @@ body {
     position: absolute;
     inset: 0;
     border: 2px solid chartreuse;
-    background-color: red;
+    background-color: black;
     height: 100svh;
     overflow: auto;
     max-height: 100svh;
     overflow: hidden;
+    
     /*border: 1px solid red;*/
 }
 
@@ -520,4 +523,8 @@ body {
     overflow: hidden;
 }
 .section-fans {
+}
+.slider-inner .slide--scrollable {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
