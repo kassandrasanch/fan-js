@@ -29,6 +29,14 @@ function raf(time) {
 requestAnimationFrame(raf);
 
 lenis.on("scroll", () => ScrollTrigger.update());
+// lenis.on("scroll", ({ scroll, limit }) => {
+//     console.log("lenis", { scroll, limit });
+// });
+ScrollTrigger.addEventListener("refresh", () => {
+    if (typeof lenis.resize === "function") {
+        lenis.resize();
+    }
+});
 
 const toggleSectionInfo = document.querySelector(".n_nav__sections");
 const sections = document.querySelectorAll("section[data-section-number][data-section-title]");
@@ -285,6 +293,308 @@ function wireNav() {
     ScrollTrigger.addEventListener("refresh", setWindowHeight);
 }
 
+function setupPageSlider(wrapper) {
+    // each slide is a .slide
+    const slides = gsap.utils.toArray(wrapper.querySelectorAll(".slide"));
+    const total = slides.length;
+
+    const SLIDE_DURATION = 5; // seconds per slide
+
+    const tops = slides.map((slide) =>
+        ScrollTrigger.create({
+            trigger: slide,
+            start: "top top"
+            // markers: true,
+        })
+    );
+
+    // console.log(`tops`);
+    // console.log(tops);
+
+    // Build a scrubbed, pinned timeline: one viewport per slide
+    const tl = gsap.timeline({
+        scrollTrigger: {
+            trigger: wrapper,
+            pin: true,
+            pinSpacing: true,
+            scrub: 1,
+            markers: true,
+            start: "top top",
+            end: `+=${(total - 1) * window.innerHeight * 2}`,
+            // end: () => "+=" + (total - 1) * window.innerHeight,
+            invalidateOnRefresh: true,
+            snap: (rawProgress) => {
+                // raw progress is 0 to 1 over entire timeline
+                // my function must return a number between 0 and 1
+                console.log(tl.labels);
+                // Rebuild normalized label positions on every call
+                const labels = slides
+                    .map((_, i) => tl.labels[`slide-${i}`] / tl.duration())
+                    .sort((a, b) => a - b);
+
+                // Find which segment (slide) we're in: [labels[i], labels[i+1]]
+                let segIndex = 0;
+                for (let i = 0; i < labels.length - 1; i++) {
+                    if (rawProgress >= labels[i] && rawProgress < labels[i + 1]) {
+                        segIndex = i;
+                        console.log("segIndex", segIndex);
+                        break;
+                    }
+                }
+
+                const segStart = labels[segIndex];
+                const segEnd = labels[segIndex + 1] ?? 1;
+                const segLen = segEnd - segStart;
+
+                // if current slide has text-reveal or scroll-accordion, treat as special
+                const hasTextReveal = !!slides[segIndex].querySelector(".n_text-reveal-section");
+                const isAccordion = !!slides[segIndex].querySelector(".n_scroll-accordion");
+                const isSpecialSlide = hasTextReveal || isAccordion;
+
+                // NORMAL SLIDES
+                if (!isSpecialSlide) {
+                    const GLOBAL_THRESHOLD = 0.08;
+
+                    let closest = labels[0];
+                    labels.forEach((p) => {
+                        if (Math.abs(p - rawProgress) < Math.abs(closest - rawProgress)) {
+                            closest = p;
+                        }
+                    });
+
+                    if (Math.abs(closest - rawProgress) < GLOBAL_THRESHOLD) {
+                        return closest;
+                    }
+
+                    return rawProgress;
+                }
+
+                // FOR SPECIAL SLIDES: only snap near edges
+                const EDGE_PORTION = 0.2;
+
+                const leftSnapEnd = segStart + segLen * EDGE_PORTION; // first 20% of segment
+                const rightSnapStart = segEnd - segLen * EDGE_PORTION; // last 20% of segment
+                // middle 60% - no snapping
+
+                if (rawProgress > leftSnapEnd && rawProgress < rightSnapStart) {
+                    return rawProgress;
+                }
+
+                const distToStart = Math.abs(rawProgress - segStart);
+                const distToEnd = Math.abs(rawProgress - segEnd);
+                const target = distToStart < distToEnd ? segStart : segEnd;
+
+                const LOCAL_THRESHOLD = segLen * 0.4;
+                if (Math.abs(rawProgress - target) < LOCAL_THRESHOLD) {
+                    return target;
+                }
+
+                return rawProgress;
+            },
+            id: "page-slider",
+            onComplete: () => {}
+        }
+    });
+
+    // setupSectionHeaders(slides, tl);
+    slides.forEach((slide, i) => {
+        // check if text reveals exist in the slide
+        const textReveal = slide.querySelector(".n_text-reveal-section");
+        const isPageHeader = textReveal && textReveal.getAttribute("element") === "page-header";
+        const sectionHeader = slide.querySelector(".n_section-header");
+        const fadeUps = slide.querySelectorAll(".slide-fade-up");
+        const scrollAccordionEl = slide.querySelector(".n_scroll-accordion");
+        const fansSection = slide.querySelector(".section-fans");
+
+        const label = `slide-${i}`;
+        tl.addLabel(label);
+
+        // check if is page header which is inside a text reveal
+        if (isPageHeader) {
+            const pageHeaderAni = setupPageHeaderAni(wrapper, tl);
+            // this fades the initial video out
+            // add to the beginning of the slide timeline
+            tl.add(pageHeaderAni, ">");
+        }
+
+        // setting up directions
+        const prev = slides[i - 1];
+
+        // 1) slide the old container up or keep it for a stacked effect
+        if (i > 0) {
+            tl.to(prev, {
+                yPercent: -100,
+                duration: 4,
+                ease: "power4.inOut"
+            });
+            // 3) pull the new container in from below
+            tl.fromTo(
+                slide,
+                { yPercent: 100 },
+                { yPercent: 0, ease: "power4.inOut", duration: 4 },
+                label
+            );
+        }
+
+        const slideInPlaceLabel = `no-snap-${label}-in-place`;
+
+        if (i > 0) {
+            tl.addLabel(slideInPlaceLabel, `>`);
+        } else {
+            // first slide is already in view, so content can start at the slide label
+            tl.add(slideInPlaceLabel, label);
+        }
+
+        // additional animations can be added here
+        if (textReveal) {
+            // console.log("TEXT REVEAL FOUND IN SLIDE", i);
+            const textRevealTl = setupSliderTextReveal(slide, tl, isPageHeader);
+            // textRevealTl.duration(SLIDE_DURATION * 0.8);
+            // console.log(textRevealTl);
+            const SLIDE_TRANSITION_DURATION = i > 0 ? 4 : 0;
+            const TEXT_REVEAL_OFFSET = SLIDE_TRANSITION_DURATION + 0.2; // start animation at either 4s or 0s + .2s depending on if
+
+            // tl.add(textRevealTl, label + "+=0.2"); // .2s delay after slide in
+            tl.add(textRevealTl, `${label}+=${TEXT_REVEAL_OFFSET}`);
+            // console.log("text reveal duration:", textRevealTl.duration());
+        }
+
+        if (isPageHeader) {
+            addPageHeaderAnimation(tl, wrapper, label);
+        }
+
+        // section header animation
+        if (sectionHeader) {
+            tl.sectionHeader(sectionHeader);
+        }
+
+        // fade-up elements animation
+        if (fadeUps.length > 0) {
+            // fadeUps.forEach((item) => {
+            //     tl.sectionFadeUp(item);
+            // });
+            tl.sectionFadeUp(fadeUps);
+        }
+
+        // dot animation
+        const dotWrapper = slide.querySelector(".dot-wrapper");
+        if (dotWrapper) {
+            addDotAnimation(dotWrapper, tl, label, 3.7);
+        }
+
+        if (fansSection) {
+            console.log('FANS SECTION IN SLIDE', i);
+            const LOTTIE_OFFSET = 0.2;
+
+            // 1) hook Lottie to the content label for THIS slide
+            console.log('SETTING UP FANS LOTTIE');
+            setupFanSansLottie(slide, tl, slideInPlaceLabel, i, LOTTIE_OFFSET);
+            console.log('FANS LOTTIE SET UP');
+
+            // 2) ensure this slide's segment is long enough so Lottie isn't hyper-fast
+            const FANS_MIN_SEGMENT = 10; // tweak this number to slow/speed Lottie
+
+            const slideStart = tl.labels[label];
+            const currentEnd = tl.duration();
+            const currentLen = currentEnd - slideStart;
+
+            if (currentLen < FANS_MIN_SEGMENT) {
+                const pad = FANS_MIN_SEGMENT - currentLen;
+                tl.to({}, { duration: pad }); // dummy tween to extend this slide's window
+            }
+        }        
+
+        if (scrollAccordionEl) {
+            // initialize scroll accordion inside the slide
+            addScrollAccordionAnimation(scrollAccordionEl, tl, label, 1);
+        }
+    });
+    GSDevTools.create({ animation: tl });
+}
+
+function initPageSlider() {
+    gsap.utils.toArray(".slider-wrapper").forEach(setupPageSlider);
+}
+
+gsap.registerEffect({
+    name: "sectionHeader",
+    effect: (target, config) => {
+        const sectionHeader = target[0];
+        const title = sectionHeader.querySelector(".n_section-header__title");
+        const number = sectionHeader.querySelector(".n_section-header__number");
+
+        if (!title || !number) return gsap.timeline(); // fail-safe
+
+        const headers = [title, number];
+
+        // initial state
+        gsap.set(title, { color: "#E10600" });
+        gsap.set(headers, { opacity: 0, yPercent: 30 });
+
+        // animation
+        const tl = gsap.timeline();
+        tl.to(headers, {
+            opacity: 1,
+            yPercent: 0,
+            duration: config.duration,
+            ease: config.ease,
+            stagger: config.stagger
+        }).to(
+            title,
+            {
+                color: "#FFFFFF",
+                duration: config.duration
+            },
+            "<"
+        );
+
+        return tl;
+    },
+    defaults: {
+        duration: 0.75,
+        ease: "power4.out",
+        stagger: 0.12
+    },
+    extendTimeline: true
+});
+
+gsap.registerEffect({
+    name: "sectionFadeUp",
+    effect: (targets, config) => {
+        const items = gsap.utils.toArray(targets);
+        if (!items.length) return gsap.timeline();
+
+        const tl = gsap.timeline();
+
+        // initial state
+        // tl.set(items, { opacity: 0, yPercent: 30 });
+
+        // fade-up animation (scrubbed by the parent timeline)
+        tl.fromTo(
+            items,
+            {
+                opacity: 0,
+                yPercent: 30
+            },
+            {
+                opacity: 1,
+                yPercent: 0,
+                duration: config.duration,
+                ease: config.ease,
+                stagger: config.stagger
+            }
+        );
+
+        return tl;
+    },
+    defaults: {
+        duration: 0.75,
+        ease: "power2.out",
+        stagger: 0.08
+    },
+    extendTimeline: true
+});
+
 function splitTextIntoWords(
     element,
     wrapClass = "text-reveal__word-wrap",
@@ -474,6 +784,149 @@ function createWordTimeline(words, color, block, isLastBlock, isLastHeading) {
     return tl;
 }
 
+function setupFanSansLottie(slide, tl, contentLabel, slideIndex, offsetSeconds = 0) {
+    console.log(`starting setupFanSansLottie for slide index ${slideIndex}`);
+    console.log("setupFanSansLottie called for label:", contentLabel);
+
+    const section = slide.matches(".section-fans") ? slide : slide.querySelector(".section-fans");
+    if (!section) return;
+
+    const lottieContainer = section.querySelector(".section-fans__side--lottie");
+    const textWrapper = section.querySelector(".section-fans__text-wrapper");
+    const textBlocks = section.querySelectorAll(".section-fans__text");
+    const backgroundDivs = section.querySelectorAll(".section-fans__background-block");
+
+    if (!lottieContainer || !textWrapper || !textBlocks.length) return;
+
+    let currentFrame = 0;
+    let lastActiveIndex = -1;
+    let bgRevealed = false;
+    const accessibleFrame = section.querySelector(".section-fans__text").dataset.frame;
+
+    setMinHeight(textWrapper, textBlocks);
+    window.addEventListener("resize", () => setMinHeight(textWrapper, textBlocks));
+
+    gsap.set(backgroundDivs, { opacity: 0 });
+
+    textBlocks.forEach((block) => {
+        gsap.set(block, {
+            y: 100,
+            opacity: 0,
+            immediateRender: false
+        });
+    });
+
+    const lottieAnimation = lottie.loadAnimation({
+        container: lottieContainer,
+        renderer: "svg",
+        loop: false,
+        autoplay: false,
+        path: "https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/685456f50615bd9f4e88f274_FanSans_Animation3_cleaned.json"
+    });
+
+    lottieAnimation.addEventListener("data_ready", () => {
+        lottieAnimation.setSubframe(false);
+    });
+
+    const frameTriggers = Array.from(textBlocks).map((el, index) => ({
+        frame: parseInt(el.dataset.frame, 10),
+        el,
+        index
+    }));
+
+    let currentTextBlock = null;
+
+    lottieAnimation.addEventListener("enterFrame", (e) => {
+        currentFrame = e.currentTime;
+
+        if (currentFrame < parseInt(accessibleFrame, 10)) {
+            gsap.to(backgroundDivs, {
+                opacity: 0,
+                y: 20,
+                duration: 0.15,
+                ease: "power2.inOut"
+            });
+        }
+
+        const active = frameTriggers
+            .filter((trigger) => currentFrame >= trigger.frame)
+            .sort((a, b) => b.frame - a.frame)[0];
+
+        if (!active || active.index === lastActiveIndex) return;
+
+        lastActiveIndex = active.index;
+
+        if (currentTextBlock) currentTextBlock.kill();
+
+        textBlocks.forEach((el) => {
+            gsap.set(el, { opacity: 0 });
+        });
+
+        currentTextBlock = gsap.to(active.el, {
+            opacity: 1,
+            y: 0,
+            duration: 0.5,
+            ease: "power2.out"
+        });
+
+        if (!bgRevealed && currentFrame >= parseInt(accessibleFrame, 10)) {
+            bgRevealed = true;
+            gsap.fromTo(
+                backgroundDivs,
+                {
+                    width: "0%",
+                    transformOrigin: "center center"
+                },
+                {
+                    opacity: 1,
+                    width: "100%",
+                    duration: 1,
+                    ease: "power4.out"
+                }
+            );
+        }
+    });
+
+    lottieAnimation.addEventListener("DOMLoaded", () => {
+        const totalFrames = lottieAnimation.totalFrames;
+        ScrollTrigger.refresh();
+
+        // console.log("FanSans DOMLoaded for", contentLabel);
+
+        const contentStart = tl.labels[contentLabel] + offsetSeconds;
+        const slideStartLabel = `slide-${slideIndex}`;
+        const nextSlideLabel = `slide-${slideIndex + 1}`;
+
+        const slideStart = tl.labels[slideStartLabel];
+        const slideEnd =
+            typeof tl.labels[nextSlideLabel] === "number"
+                ? tl.labels[nextSlideLabel]
+                : tl.duration();
+
+        const END_PADDING = 0.2;
+        let lottieDur = slideEnd - contentStart - END_PADDING;
+        if (lottieDur < 0.3) lottieDur = 0.3;
+
+        // console.log({
+        //     contentStart,
+        //     slideStart,
+        //     slideEnd,
+        //     lottieDur
+        // });
+
+        const lottieTween = gsap.to(lottieAnimation, {
+            frame: totalFrames - 1,
+            ease: "none",
+            duration: lottieDur,
+            onUpdate() {
+                lottieAnimation.goToAndStop(lottieAnimation.frame, true);
+            }
+        });
+
+        tl.add(lottieTween, contentStart);
+    });
+}
+
 function resetAndPlay(vid) {
     if (!vid) return;
     const doStart = () => {
@@ -496,135 +949,6 @@ function resetAndPlay(vid) {
         vid.addEventListener("loadedmetadata", onMeta);
         vid.load?.();
     }
-}
-
-function initVideoTextScrub(wrapper) {
-    const panels = gsap.utils.toArray(
-        wrapper.querySelectorAll(".ripple-gradient__bg-wrapper .ripple-gradient")
-    );
-    const total = panels.length;
-
-    gsap.set(panels, { xPercent: (i) => (i === 0 ? 0 : 100) });
-    const prevVid = panels[0]?.querySelector("video");
-    const curVid = panels[1]?.querySelector("video");
-    gsap.set([prevVid, curVid], { xPercent: 0 });
-
-    const video = wrapper.querySelector("video");
-    const blocks = gsap.utils.toArray(wrapper.querySelectorAll(".n_text-reveal__block"));
-    const totalBlocks = blocks.length;
-
-    if (video) {
-        video.preload = "metadata";
-        video.playsInline = true;
-        video.muted = true;
-    }
-
-    const masterTl = gsap.timeline({
-        paused: true,
-        defaults: { ease: "none" },
-        scrollTrigger: {
-            trigger: wrapper,
-            start: "top top",
-            end: () => `+=${blocks.length * 700}`,
-            pin: true,
-            scrub: 1,
-
-            toggleActions: "play reverse play reverse"
-        }
-    });
-
-    const introTl = gsap.timeline();
-    blocks.slice(0, 2).forEach((block, blkIdx) => {
-        const headings = block.querySelectorAll(".n_text-reveal__heading");
-        headings.forEach((h1, hIdx) => {
-            const words = splitTextIntoWords(h1);
-            prepareWords(words);
-            const isLastHeading = hIdx === headings.length - 1;
-            const isLastBlock = blkIdx === 1;
-            introTl.add(createWordTimeline(words, "#ffffff", block, isLastBlock, isLastHeading));
-        });
-    });
-
-    const videoTl = gsap.timeline();
-
-    blocks.slice(2).forEach((block, i) => {
-        const blockIndex = i + 2; // real index in `blocks`
-        const headings = block.querySelectorAll(".n_text-reveal__heading");
-
-        if (blockIndex === 2 && total >= 2) {
-            videoTl.addLabel("rippleSwap");
-
-            videoTl.to(
-                panels[0],
-                {
-                    xPercent: -100,
-                    duration: 1,
-                    ease: "power4.inOut"
-                },
-                "rippleSwap"
-            );
-
-            videoTl.fromTo(
-                panels[1],
-                {
-                    xPercent: 100
-                },
-                {
-                    xPercent: 0,
-                    duration: 1,
-                    ease: "power4.inOut"
-                },
-                "rippleSwap"
-            );
-
-            if (prevVid) {
-                videoTl.to(
-                    prevVid,
-                    {
-                        xPercent: 50,
-                        duration: 1,
-                        ease: "power4.inOut"
-                    },
-                    "rippleSwap"
-                );
-            }
-            if (curVid) {
-                videoTl.fromTo(
-                    curVid,
-                    {
-                        xPercent: -50
-                    },
-                    {
-                        xPercent: 0,
-                        duration: 1,
-                        ease: "power4.inOut"
-                    },
-                    "rippleSwap"
-                );
-            }
-        }
-
-        headings.forEach((h1, headingIndex) => {
-            const words = splitTextIntoWords(h1);
-            prepareWords(words);
-            const isLastBlock = blockIndex === totalBlocks - 1;
-            const isLastHeading = headingIndex === headings.length - 1;
-            const passLastHeading = isLastHeading && !isLastBlock;
-
-            const wordAnim = createWordTimeline(
-                words,
-                "#ffffff",
-                block,
-                isLastBlock,
-                passLastHeading
-            );
-
-            videoTl.add(wordAnim);
-        });
-    });
-
-    masterTl.add(introTl);
-    masterTl.add(videoTl);
 }
 
 function animateAnton(block) {
@@ -734,1000 +1058,12 @@ function initTextRevealSections() {
     });
 }
 
-// 0439 this makes you pause at section banners and headers
-
-// gsap.utils.toArray(".section-banner, .n_section-header").forEach((el) => {
-//     ScrollTrigger.create({
-//         trigger: el,
-//         start: "top top", // as soon as its top hits the top of the viewport
-//         end: "+=100%", // pin for exactly one viewport-height of scrolling
-//         pin: true,
-//         pinSpacing: true
-//         // markers: true
-//     });
-// });
-
-// dot Animate
-
-function dotAnimate() {
-    gsap.set(".dot-wrapper", {
-        clipPath: "circle(0% at 50% 100%)"
-    });
-    let dotAnimation = gsap.timeline({
-        scrollTrigger: {
-            trigger: ".dot-reveal-section .text-color-black",
-            start: "top 40%",
-            end: "+=300",
-            toggleActions: "play none none reverse",
-            scrub: 1
-            // markers:true
-        }
-    });
-    dotAnimation.to(".dot-wrapper", {
-        // clipPath: "circle(120% at center)",
-        clipPath: "circle(120% at 50% 100%)",
-        duration: 1,
-        ease: "power2.out"
-    });
-}
-
-// dotAnimate();
-
 function setMinHeight(textWrapper, textBlocks) {
     const heights = Array.from(textBlocks).map((block) => block.offsetHeight);
 
     const tallest = Math.max(...heights);
 
     textWrapper.style.minHeight = `${tallest}px`;
-}
-
-function initFanSansLottie() {
-    const section = document.querySelector(".section-fans");
-    const lottieContainer = section.querySelector(".section-fans__side--lottie");
-
-    const textWrapper = section.querySelector(".section-fans__text-wrapper");
-    const textBlocks = section.querySelectorAll(".section-fans__text");
-
-    let currentFrame = 0;
-    let lastActiveIndex = -1;
-    let bgRevealed = false;
-
-    const backgroundDivs = section.querySelectorAll(".section-fans__background-block");
-
-    let accessibleFrame = section.querySelector(".section-fans__text").dataset.frame;
-
-    setMinHeight(textWrapper, textBlocks);
-
-    window.addEventListener("resize", () => {
-        setMinHeight(textWrapper, textBlocks);
-    });
-
-    gsap.set(backgroundDivs, {
-        opacity: 0
-    });
-
-    textBlocks.forEach((block, index) => {
-        // const words = splitTextIntoWords(block);
-        // prepareWords(words)
-
-        gsap.set(block, {
-            y: 100,
-            opacity: 0,
-            immediateRender: false
-        });
-    });
-
-    let lottieAnimation = lottie.loadAnimation({
-        container: lottieContainer,
-        renderer: "svg",
-        loop: false,
-        autoplay: false,
-        path: "https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/685456f50615bd9f4e88f274_FanSans_Animation3_cleaned.json"
-        // working test
-        // path: "https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/67e40ae7093e8d53e37e4f3a_FanSans_Animation3.json"
-    });
-
-    lottieAnimation.addEventListener("DOMLoaded", () => {
-        const totalFrames = lottieAnimation.totalFrames;
-        gsap.to(lottieAnimation, {
-            frame: totalFrames - 1,
-            ease: "none",
-            scrollTrigger: {
-                trigger: section,
-                start: "top top",
-                end: "+=2000", // control scroll length
-                pin: true,
-                scrub: true
-            },
-            onUpdate: () => {
-                lottieAnimation.goToAndStop(lottieAnimation.frame, true);
-            }
-        });
-    });
-
-    // fix the blinking issue
-
-    lottieAnimation.addEventListener("data_ready", () => {
-        lottieAnimation.setSubframe(false);
-    });
-
-    // 1. Trigger text changes based on frame
-    const frameTriggers = Array.from(textBlocks).map((el, index) => ({
-        frame: parseInt(el.dataset.frame, 10),
-        el,
-        index
-    }));
-
-    let currentTextBlock = null;
-
-    lottieAnimation.addEventListener("enterFrame", (e) => {
-        currentFrame = e.currentTime;
-
-        if (currentFrame < parseInt(accessibleFrame)) {
-            gsap.to(backgroundDivs, {
-                opacity: 0,
-                y: 20,
-                duration: 0.15,
-                ease: "power2.inOut"
-            });
-        }
-
-        const active = frameTriggers
-            .filter((trigger) => currentFrame >= trigger.frame)
-            .sort((a, b) => b.frame - a.frame)[0];
-
-        if (!active || active.index === lastActiveIndex) return;
-
-        lastActiveIndex = active.index;
-
-        if (currentTextBlock) currentTextBlock.kill();
-
-        textBlocks.forEach((el) => {
-            gsap.set(el, {
-                opacity: 0
-            });
-        });
-
-        currentTextBlock = gsap.to(active.el, {
-            opacity: 1,
-            y: 0,
-            duration: 0.5,
-            ease: "power2.out"
-        });
-
-        if (!bgRevealed && currentFrame >= parseInt(accessibleFrame, 10)) {
-            bgRevealed = true;
-            gsap.fromTo(
-                backgroundDivs,
-                {
-                    width: "0%",
-                    transformOrigin: "center center"
-                },
-                {
-                    opacity: 1,
-                    width: "100%",
-                    duration: 1,
-                    ease: "power4.out"
-                }
-            );
-        }
-    });
-}
-
-function scrollAccordion(accordionRoot) {
-    // 1️⃣ Find elements relative to this accordion instance
-    const titles = Array.from(accordionRoot.querySelectorAll(".n_accordion-title"));
-    const defs = Array.from(accordionRoot.querySelectorAll(".panel__definition"));
-    const wrapper = accordionRoot.querySelector(".panels-mask");
-    const panelsInner = accordionRoot.querySelector(".panels-mask__inner");
-    let currentIndex = 0;
-    const time = 0.8;
-
-    // 2️⃣ Hide initially for scroll-reveal
-    // gsap.set(wrapper, { autoAlpha: 0 });
-
-    // 3️⃣ ScrollTrigger to fade in
-    ScrollTrigger.create({
-        trigger: accordionRoot,
-        start: "top 80%",
-        end: "top 70%",
-        onEnter: () => {
-            gsap.to(wrapper, {
-                autoAlpha: 1,
-                duration: 0.8,
-                ease: "power2.out"
-            });
-        },
-        toggleActions: "play none none none"
-    });
-
-    // 4️⃣ Set uniform heights for all panels (for smooth scroll/pin effect)
-    function setUniformHeights() {
-        requestAnimationFrame(() => {
-            let maxHeight = Math.ceil(
-                Math.max(...defs.map((def) => def.getBoundingClientRect().height))
-            );
-            defs.forEach((def) => (def.style.height = maxHeight + "px"));
-            panelsInner.style.height = maxHeight + "px";
-        });
-    }
-    setUniformHeights();
-    window.addEventListener("resize", () => {
-        setUniformHeights();
-        moveDefinition(currentIndex);
-    });
-
-    if (!accordionRoot.id) {
-        accordionRoot.id = "accordion-" + Math.random().toString(36).slice(2, 10);
-    }
-
-    // 5️⃣ Pin and scrub animation (scroll-jacked accordion)
-    ScrollTrigger.create({
-        id: accordionRoot.id,
-        trigger: accordionRoot,
-        pin: true,
-        start: "top top",
-        scrub: 1,
-        end: () => `+=${(titles.length - 1) * 500}`,
-        onUpdate: (self) => {
-            let newIndex = Math.floor(self.progress * titles.length);
-            newIndex = Math.min(newIndex, titles.length - 1);
-            if (newIndex !== currentIndex) {
-                currentIndex = newIndex;
-                activateTitle(currentIndex);
-                moveDefinition(currentIndex);
-            }
-        }
-    });
-
-    // 6️⃣ Keyboard/Click accessibility: tab navigation!
-    titles.forEach((tab, i) => {
-        tab.addEventListener("click", (e) => {
-            e.preventDefault();
-            activateTitle(i);
-            moveDefinition(i);
-            tab.focus();
-        });
-        tab.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-                e.preventDefault();
-                let next = (i + 1) % titles.length;
-                titles[next].focus();
-                activateTitle(next);
-                moveDefinition(next);
-            }
-            if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-                e.preventDefault();
-                let prev = (i - 1 + titles.length) % titles.length;
-                titles[prev].focus();
-                activateTitle(prev);
-                moveDefinition(prev);
-            }
-            if (e.key === "Home") {
-                e.preventDefault();
-                titles[0].focus();
-                activateTitle(0);
-                moveDefinition(0);
-            }
-            if (e.key === "End") {
-                e.preventDefault();
-                titles[titles.length - 1].focus();
-                activateTitle(titles.length - 1);
-                moveDefinition(titles.length - 1);
-            }
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                activateTitle(i);
-                moveDefinition(i);
-            }
-        });
-    });
-
-    // 7️⃣ Animate and mark the active tab (ARIA, styles, focus)
-    function activateTitle(index) {
-        titles.forEach((t, j) => {
-            t.classList.toggle("active", j === index);
-            t.setAttribute("aria-selected", j === index ? "true" : "false");
-            t.setAttribute("tabindex", j === index ? "0" : "-1");
-        });
-        defs.forEach((def, j) => {
-            def.setAttribute("aria-hidden", j === index ? "false" : "true");
-        });
-        let activeTitle = titles[index];
-        gsap.fromTo(
-            activeTitle,
-            { autoAlpha: 1, x: 50 },
-            {
-                autoAlpha: 1,
-                x: 0,
-                duration: time,
-                ease: "power4.out"
-            }
-        );
-    }
-
-    // 8️⃣ Animate definitions sliding
-    function moveDefinition(index) {
-        let maxHeight = Math.max(...defs.map((def) => def.scrollHeight));
-        gsap.to(defs, {
-            y: (i) => -(i - index) * maxHeight,
-            autoAlpha: (i) => (i === index ? 1 : 0),
-            duration: time,
-            ease: "power4.out"
-        });
-    }
-
-    // 9️⃣ Initialize first state
-    activateTitle(0);
-    moveDefinition(0);
-}
-// document.querySelectorAll(".n_scroll-accordion").forEach(scrollAccordion);
-
-function initColorPanels() {
-    let panels = gsap.utils.toArray(".section--colors .color-panel");
-
-    let tl = gsap.timeline({
-        scrollTrigger: {
-            // scroller: scrollContainer,
-            trigger: ".section--colors .colors",
-            pin: ".section--colors .colors-wrapper",
-            pinSpacing: true,
-            scrub: 1,
-            onUpdate: (self) => {
-                updateActivePanel(self.progress);
-            },
-            end: "+=" + panels.length * 1000 // Adjust scroll length
-        }
-    });
-
-    function updateActivePanel(progress) {
-        let activeIndex = Math.round(progress * panels.length - 0.5);
-
-        // Ensure the last panel stays active at the end
-        if (activeIndex >= panels.length - 1) {
-            activeIndex = panels.length - 1; // Keep last panel active
-        }
-
-        panels.forEach((panel, index) => {
-            if (index === activeIndex) {
-                panel.classList.add("active");
-            } else {
-                panel.classList.remove("active");
-            }
-        });
-    }
-
-    panels.forEach((panel, index) => {
-        let isLast = index === panels.length - 1;
-        const nextPanel = isLast ? false : panels[index + 1];
-        let currentContent = panel.querySelector(".colors-content");
-        let nextContent = nextPanel ? nextPanel.querySelector(".colors-content") : null;
-        if (!isLast) {
-            tl.to(currentContent, {
-                clipPath: "inset(0 100% 0 0)", // from fully visible to clipped
-                duration: 0.2,
-                ease: "expo.inOut"
-            });
-
-            tl.to(panel, {
-                width: "5%",
-                ease: "expo.out"
-            });
-
-            tl.to(
-                nextPanel,
-                {
-                    width: "100%", // Expand next panel
-                    ease: "expo.out",
-                    onStart: () => {
-                        nextPanel.classList.add("active");
-                        if (nextContent) {
-                            // currentContent.classList.remove("hide");
-                            // nextContent.classList.add("show"); // Add animation class
-                        }
-                    }
-                },
-                "<"
-            ); // Sync animations
-        } else {
-            tl.to(panel, {
-                width: "100%",
-                duration: 0.5,
-                ease: "expo.inOut"
-            });
-        }
-    });
-}
-
-function stackedSlider(slider) {
-    // const slides = slider.querySelectorAll('.n_stacked-slide');
-    const slides = gsap.utils.toArray(slider.querySelectorAll(".n_stacked-slide"));
-    const total = slides.length;
-    const imgs = slides.map((s) => s.querySelector("img"));
-
-    let tl = gsap.timeline({
-        scrollTrigger: {
-            trigger: slider,
-            pin: true,
-            scrub: 1,
-            start: "top top",
-            end: `+=${(slides.length - 1) * 1500}`,
-
-            snap: 1 / (total - 1)
-        }
-    });
-    slides.forEach((slide, i) => {
-        if (i === 0) return; // leave the first in-place to start
-
-        const prev = slides[i - 1];
-        const prevImg = imgs[i - 1];
-        const curImg = imgs[i];
-
-        // 1) slide the old container out to the left
-        tl.to(prev, {
-            xPercent: -100,
-            duration: 1,
-            ease: "power4.inOut"
-        });
-
-        if (prevImg) {
-            // 2) push that old image out to the right
-            tl.to(
-                prevImg,
-                {
-                    xPercent: 100,
-                    duration: 1,
-                    ease: "power4.inOut"
-                },
-                "<"
-            );
-        }
-
-        // 3) pull the new container in from the right
-        tl.fromTo(
-            slide,
-            { xPercent: 100 },
-            { xPercent: 0, duration: 1, ease: "power4.inOut" },
-            "<"
-        );
-
-        // 4) pull its image in from the left
-        tl.fromTo(
-            curImg,
-            { xPercent: -100 },
-            { xPercent: 0, duration: 1, ease: "power4.inOut" },
-            "<"
-        );
-    });
-
-    // 1. Make it focusable
-    slider.setAttribute("tabindex", "0");
-
-    slider.addEventListener("keydown", (e) => {
-        const st = tl.scrollTrigger;
-        const start = st.start,
-            end = st.end,
-            scrollY = window.scrollY;
-
-        // normalized progress [0‒1]
-        const prog = Math.max(0, Math.min(1, (scrollY - start) / (end - start)));
-        const per = 1 / (total - 1);
-        let idx = Math.round(prog / per);
-
-        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-            idx = Math.min(idx + 1, total - 1);
-        } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-            idx = Math.max(idx - 1, 0);
-        } else {
-            return; // not an arrow key
-        }
-
-        e.preventDefault();
-
-        // compute exact scroll position for that slide
-        const targetScroll = start + (idx * (end - start)) / (total - 1);
-
-        // tell ScrollTrigger to jump there
-        st.scroll(targetScroll);
-
-        const title = slides[idx].querySelector(".slide__title").textContent;
-        document.getElementById("slider-status").textContent = `Slide ${
-            idx + 1
-        } of ${total}: ${title}`;
-    });
-}
-
-function initStackedSliders() {
-    const sections = document.querySelectorAll(".n_stacked-slider");
-
-    sections.forEach((section) => {
-        if (section._revealed) return; // only once
-        section._revealed = true;
-
-        stackedSlider(section);
-    });
-}
-
-function setupBigSlider(wrapper) {
-    // 1) Each “panel” is the .n_big-slide element
-    const panels = gsap.utils.toArray(wrapper.querySelectorAll(".n_big-slide"));
-    const total = panels.length;
-
-    // 2) Inside each panel we’ll animate both the <img> and the panel
-    const imgs = panels.map((p) => p.querySelector(".n_big-slide_img"));
-
-    // 4) Build a scrubbed, pinned timeline: one viewport per slide
-    const tl = gsap.timeline({
-        scrollTrigger: {
-            trigger: wrapper,
-            pin: true,
-            scrub: 1,
-            // markers: true,
-            start: "top top",
-            end: `+=${(total - 1) * window.innerHeight}`,
-            snap: 1 / (total - 1)
-        }
-    });
-
-    // 5) Sequence: slide out the old panel/image, bring in the new
-    panels.forEach((panel, i) => {
-        if (i === 0) return; // skip first panel
-
-        const prev = panels[i - 1],
-            prevImg = imgs[i - 1],
-            curImg = imgs[i];
-
-        // 1) slide the old container out to the left
-        tl.to(prev, {
-            xPercent: -100,
-            duration: 1,
-            ease: "power4.inOut"
-        });
-
-        // 2) push that old image out to the right
-        if (prevImg) {
-            tl.to(
-                prevImg,
-                {
-                    xPercent: 100,
-                    duration: 1,
-                    ease: "power4.inOut"
-                },
-                "<"
-            );
-        }
-
-        // 3) pull the new container in from the right
-        tl.fromTo(
-            panel,
-            { xPercent: 100 },
-            { xPercent: 0, duration: 1, ease: "power4.inOut" },
-            "<"
-        );
-        // 4) pull its image in from the left
-        if (curImg) {
-            tl.fromTo(
-                curImg,
-                { xPercent: -100 },
-                { xPercent: 0, duration: 1, ease: "power4.inOut" },
-                "<"
-            );
-        }
-    });
-}
-
-function initBigSliderAnimations() {
-    gsap.utils.toArray(".n_big-slider_wrapper").forEach(setupPageSlider);
-}
-// 11.20.25 notes
-// fix split text banner styling
-// make accordion tabbable
-
-//done
-// text reveal doesnt animate first block
-
-// < // start at the beginning of prev tween
-// +2 // start 2 seconds after the end of prev tween
-// <0.5 // start 0.5 seconds after the beginning of prev tween
-// containerAnimation: use this for the pinned photo stuff?
-function setupPageSlider(wrapper) {
-    // each slide is a .slide
-    const slides = gsap.utils.toArray(wrapper.querySelectorAll(".slide"));
-    const total = slides.length;
-
-    const SLIDE_DURATION = 5; // seconds per slide
-
-    const tops = slides.map((slide) =>
-        ScrollTrigger.create({
-            trigger: slide,
-            start: "top top"
-            // markers: true,
-        })
-    );
-
-    console.log(`tops`);
-    console.log(tops);
-
-    // Build a scrubbed, pinned timeline: one viewport per slide
-    const tl = gsap.timeline({
-        scrollTrigger: {
-            trigger: wrapper,
-            pin: true,
-            scrub: 1,
-            markers: true,
-            start: "top top",
-            end: `+=${(total - 1) * window.innerHeight * 2}`,
-            // added 11.21.25, should update to tolerate timeline changes so it doesnt just cache once
-            snap: (rawProgress) => {
-                // Rebuild normalized label positions on every call
-                const labels = slides
-                    .map((_, i) => tl.labels[`slide-${i}`] / tl.duration())
-                    .sort((a, b) => a - b);
-
-                // Find which segment (slide) we're in: [labels[i], labels[i+1]]
-                let segIndex = 0;
-                for (let i = 0; i < labels.length - 1; i++) {
-                    if (rawProgress >= labels[i] && rawProgress < labels[i + 1]) {
-                        segIndex = i;
-                        break;
-                    }
-                }
-
-                const segStart = labels[segIndex];
-                const segEnd = labels[segIndex + 1] ?? 1;
-                const segLen = segEnd - segStart;
-
-                const hasTextReveal = !!slides[segIndex].querySelector(".n_text-reveal-section");
-                const isAccordion = !!slides[segIndex].querySelector(".n_scroll-accordion");
-                const isSpecialSlide = hasTextReveal || isAccordion;
-
-                // NORMAL SLIDES
-                if (!isSpecialSlide) {
-                    const GLOBAL_THRESHOLD = 0.08;
-
-                    let closest = labels[0];
-                    labels.forEach((p) => {
-                        if (Math.abs(p - rawProgress) < Math.abs(closest - rawProgress)) {
-                            closest = p;
-                        }
-                    });
-
-                    if (Math.abs(closest - rawProgress) < GLOBAL_THRESHOLD) {
-                        return closest;
-                    }
-
-                    return rawProgress;
-                }
-
-                // TEXT-REVEAL / ACCORDION SLIDES: only snap near edges
-                const EDGE_PORTION = 0.2;
-
-                const leftSnapEnd = segStart + segLen * EDGE_PORTION;
-                const rightSnapStart = segEnd - segLen * EDGE_PORTION;
-
-                if (rawProgress > leftSnapEnd && rawProgress < rightSnapStart) {
-                    return rawProgress;
-                }
-
-                const distToStart = Math.abs(rawProgress - segStart);
-                const distToEnd = Math.abs(rawProgress - segEnd);
-                const target = distToStart < distToEnd ? segStart : segEnd;
-
-                const LOCAL_THRESHOLD = segLen * 0.4;
-                if (Math.abs(rawProgress - target) < LOCAL_THRESHOLD) {
-                    return target;
-                }
-
-                return rawProgress;
-            },
-            // snap: (rawProgress) => {
-            //     // Build normalized label positions once
-            //     if (!tl._labelProgress) {
-            //         tl._labelProgress = slides
-            //             .map((_, i) => {
-            //                 const t = tl.labels[`slide-${i}`];
-            //                 return t / tl.duration(); // 0–1
-            //             })
-            //             .sort((a, b) => a - b);
-            //     }
-
-            //     const labels = tl._labelProgress;
-
-            //     // Find which segment (slide) we're in: [labels[i], labels[i+1]]
-            //     let segIndex = 0;
-            //     for (let i = 0; i < labels.length - 1; i++) {
-            //         if (rawProgress >= labels[i] && rawProgress < labels[i + 1]) {
-            //             segIndex = i;
-            //             break;
-            //         }
-            //     }
-
-            //     const segStart = labels[segIndex];
-            //     const segEnd = labels[segIndex + 1] ?? 1;
-            //     const segLen = segEnd - segStart;
-
-            //     // Does THIS slide have a text reveal?
-            //     const hasTextReveal = !!slides[segIndex].querySelector(".n_text-reveal-section");
-            //     const isAccordion = !!slides[segIndex].querySelector(".n_scroll-accordion");
-
-            //     const isSpecialSlide = hasTextReveal || isAccordion;
-
-            //     // ─────────────────────────────────────
-            //     // CASE 1: Normal slide -> normal snapping
-            //     // ─────────────────────────────────────
-            //     if (!isSpecialSlide) {
-            //         const GLOBAL_THRESHOLD = 0.08; // 8% of total
-
-            //         // Nearest label to current progress
-            //         let closest = labels[0];
-            //         labels.forEach((p) => {
-            //             if (Math.abs(p - rawProgress) < Math.abs(closest - rawProgress)) {
-            //                 closest = p;
-            //             }
-            //         });
-
-            //         // Only snap if reasonably close
-            //         if (Math.abs(closest - rawProgress) < GLOBAL_THRESHOLD) {
-            //             return closest;
-            //         }
-
-            //         return rawProgress;
-            //     }
-
-            //     // ─────────────────────────────────────
-            //     // CASE 2: Slide WITH text reveal
-            //     // Only snap near edges, not in the middle
-            //     // ─────────────────────────────────────
-            //     const EDGE_PORTION = 0.2; // 20% of this slide's segment per side
-
-            //     const leftSnapEnd = segStart + segLen * EDGE_PORTION;
-            //     const rightSnapStart = segEnd - segLen * EDGE_PORTION;
-
-            //     // Middle 60% of this slide => NO snapping at all
-            //     if (rawProgress > leftSnapEnd && rawProgress < rightSnapStart) {
-            //         return rawProgress;
-            //     }
-
-            //     // Near edges -> snap to THIS slide's start or end
-            //     const distToStart = Math.abs(rawProgress - segStart);
-            //     const distToEnd = Math.abs(rawProgress - segEnd);
-            //     const target = distToStart < distToEnd ? segStart : segEnd;
-
-            //     // Optional local guard: don't snap from super far away
-            //     const LOCAL_THRESHOLD = segLen * 0.4; // up to 40% of this segment
-            //     if (Math.abs(rawProgress - target) < LOCAL_THRESHOLD) {
-            //         return target;
-            //     }
-
-            //     return rawProgress;
-            // },
-
-            id: "page-slider",
-            onComplete: () => {}
-        }
-    });
-
-    // setupSectionHeaders(slides, tl);
-    slides.forEach((slide, i) => {
-        // check if text reveals exist in the slide
-        const textReveal = slide.querySelector(".n_text-reveal-section");
-        const isPageHeader = textReveal && textReveal.getAttribute("element") === "page-header";
-        const sectionHeader = slide.querySelector(".n_section-header");
-        const fadeUps = slide.querySelectorAll(".slide-fade-up");
-        const scrollAccordionEl = slide.querySelector(".n_scroll-accordion");
-        const fansSection = slide.querySelector(".section-fans");
-
-        const label = `slide-${i}`;
-        tl.addLabel(label);
-
-        // check if is page header which is inside a text reveal
-        if (isPageHeader) {
-            const pageHeaderAni = setupPageHeaderAni(wrapper, tl);
-            // this fades the initial video out
-            // add to the beginning of the slide timeline
-            tl.add(pageHeaderAni, ">");
-        }
-
-        // setting up directions
-        const prev = slides[i - 1];
-
-        // 1) slide the old container up or keep it for a stacked effect
-        if (i > 0) {
-            tl.to(prev, {
-                yPercent: -100,
-                duration: 4,
-                ease: "power4.inOut"
-            });
-             // 3) pull the new container in from below
-            tl.fromTo(
-                slide,
-                { yPercent: 100 },
-                { yPercent: 0, ease: "power4.inOut", duration: 4 },
-                label
-            );            
-        }
-
-       
-        // if (i > 0) {
-
-        // }
-
-        // additional animations can be added here
-        if (textReveal) {
-            // console.log("TEXT REVEAL FOUND IN SLIDE", i);
-            const textRevealTl = setupSliderTextReveal(slide, tl, isPageHeader);
-            // textRevealTl.duration(SLIDE_DURATION * 0.8);
-            // console.log(textRevealTl);
-            const SLIDE_TRANSITION_DURATION = i > 0 ? 4 : 0;
-            const TEXT_REVEAL_OFFSET = SLIDE_TRANSITION_DURATION + 0.2; // start animation at either 4s or 0s + .2s depending on if
-
-            // tl.add(textRevealTl, label + "+=0.2"); // .2s delay after slide in
-            tl.add(textRevealTl, `${label}+=${TEXT_REVEAL_OFFSET}`);
-            console.log("text reveal duration:", textRevealTl.duration());
-        }
-
-        if (isPageHeader) {
-            addPageHeaderAnimation(tl, wrapper, label);
-        }
-
-        // section header animation
-        if (sectionHeader) {
-            addSectionHeaderAnimation(tl, sectionHeader, label, 2);
-        }
-
-        // fade-up elements animation
-        if (fadeUps.length > 0) {
-            addSectionFadeUpAnimation(tl, fadeUps, label, 3.7);
-        }
-
-        // dot animation
-        const dotWrapper = slide.querySelector(".dot-wrapper");
-        if (dotWrapper) {
-            addDotAnimation(dotWrapper, tl, label, 3.7);
-        }
-
-        // 0439 11.21.25 not sure i like this and text reveal offset. it feels dangerous bc they could overlap instead of sequencing properly
-        // fans section animation
-        if (fansSection) {
-            const SLIDE_TRANSITION_DURATION = i > 0 ? 4 : 0;
-            // const LOTTIE_OFFSET = SLIDE_TRANSITION_DURATION + 0.2;
-            const LOTTIE_OFFSET = 0.2;
-            setupFanSansLottie(slide, tl, label, LOTTIE_OFFSET);
-        }
-
-        if (scrollAccordionEl) {
-            // initialize scroll accordion inside the slide
-            addScrollAccordionAnimation(scrollAccordionEl, tl, label, 1);
-        }
-    });
-    GSDevTools.create({ animation: tl });
-}
-
-function initPageSlider() {
-    gsap.utils.toArray(".slider-wrapper").forEach(setupPageSlider);
-}
-
-function setupFanSansLottie(slide, tl, label, offsetSeconds = 0) {
-    const section = slide.matches(".section-fans") ? slide : slide.querySelector(".section-fans");
-    if (!section) return;
-
-    const lottieContainer = section.querySelector(".section-fans__side--lottie");
-    const textWrapper = section.querySelector(".section-fans__text-wrapper");
-    const textBlocks = section.querySelectorAll(".section-fans__text");
-    const backgroundDivs = section.querySelectorAll(".section-fans__background-block");
-
-    if (!lottieContainer || !textWrapper || !textBlocks.length) return;
-
-    let currentFrame = 0;
-    let lastActiveIndex = -1;
-    let bgRevealed = false;
-
-    let accessibleFrame = section.querySelector(".section-fans__text").dataset.frame;
-
-    setMinHeight(textWrapper, textBlocks);
-    window.addEventListener("resize", () => {
-        setMinHeight(textWrapper, textBlocks);
-    });
-
-    gsap.set(backgroundDivs, { opacity: 0 });
-
-    textBlocks.forEach((block) => {
-        gsap.set(block, {
-            y: 100,
-            opacity: 0,
-            immediateRender: false
-        });
-    });
-
-    const lottieAnimation = lottie.loadAnimation({
-        container: lottieContainer,
-        renderer: "svg",
-        loop: false,
-        autoplay: false,
-        path: "https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/685456f50615bd9f4e88f274_FanSans_Animation3_cleaned.json"
-    });
-
-    // fix blinking issue
-    lottieAnimation.addEventListener("data_ready", () => {
-        lottieAnimation.setSubframe(false);
-    });
-
-    // 1. Trigger text changes based on frame (same logic as before)
-    const frameTriggers = Array.from(textBlocks).map((el, index) => ({
-        frame: parseInt(el.dataset.frame, 10),
-        el,
-        index
-    }));
-
-    let currentTextBlock = null;
-
-    lottieAnimation.addEventListener("enterFrame", (e) => {
-        currentFrame = e.currentTime;
-
-        if (currentFrame < parseInt(accessibleFrame, 10)) {
-            gsap.to(backgroundDivs, {
-                opacity: 0,
-                y: 20,
-                duration: 0.15,
-                ease: "power2.inOut"
-            });
-        }
-
-        const active = frameTriggers
-            .filter((trigger) => currentFrame >= trigger.frame)
-            .sort((a, b) => b.frame - a.frame)[0];
-
-        if (!active || active.index === lastActiveIndex) return;
-
-        lastActiveIndex = active.index;
-
-        if (currentTextBlock) currentTextBlock.kill();
-
-        textBlocks.forEach((el) => {
-            gsap.set(el, { opacity: 0 });
-        });
-
-        currentTextBlock = gsap.to(active.el, {
-            opacity: 1,
-            y: 0,
-            duration: 0.5,
-            ease: "power2.out"
-        });
-
-        if (!bgRevealed && currentFrame >= parseInt(accessibleFrame, 10)) {
-            bgRevealed = true;
-            gsap.fromTo(
-                backgroundDivs,
-                {
-                    width: "0%",
-                    transformOrigin: "center center"
-                },
-                {
-                    opacity: 1,
-                    width: "100%",
-                    duration: 1,
-                    ease: "power4.out"
-                }
-            );
-        }
-    });
-
-    // 2. When Lottie data is ready, wire it into the *slider timeline*
-    lottieAnimation.addEventListener("DOMLoaded", () => {
-        const totalFrames = lottieAnimation.totalFrames;
-
-        const lottieTween = gsap.to(lottieAnimation, {
-            frame: totalFrames - 1,
-            ease: "none",
-            duration: 5, // <<< how long you want within this slide
-            onUpdate() {
-                lottieAnimation.goToAndStop(lottieAnimation.frame, true);
-            }
-        });
-
-        // stick the tween into the main slider timeline at this slide's label
-        tl.add(lottieTween, `${label}+=${offsetSeconds}`);
-    });
 }
 
 function addPageHeaderAnimation(tl, wrapper, label) {
@@ -2099,64 +1435,6 @@ function setupSliderTextReveal(wrapper, tl, isPageHeader) {
     return masterTl;
 }
 
-// const firstSlide = document.querySelector(".slide");
-// const firstWords = firstSlide.querySelectorAll(".n_text-reveal__word");
-// getComputedStyle(firstWords[0]).opacity;      // should be "0"
-// getComputedStyle(firstWords[0]).transform;    // should contain "matrix(...)" translating down
-
-function initStoryLottie() {
-    const container = document.querySelector(".story__lottie");
-    if (!container) return;
-
-    // 1️⃣ load the animation (but don’t autoplay)
-    const anim = lottie.loadAnimation({
-        container,
-        renderer: "svg",
-        loop: false,
-        autoplay: false,
-        path: "https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/6843520aa1e4f9f54b166004_2025_06_06_EASCI_Fanatics_ColorCascade_01.json"
-    });
-
-    // 2️⃣ once it’s ready, hook up GSAP/ScrollTrigger
-    anim.addEventListener("DOMLoaded", () => {
-        const totalFrames = anim.totalFrames;
-
-        // start hidden
-        gsap.set(container, { autoAlpha: 0 });
-
-        // scrub timeline
-        gsap.timeline({
-            scrollTrigger: {
-                trigger: container,
-                start: "top 80%",
-                end: "+=500", // over the next 500px of scroll
-                scrub: true
-                //markers: true,
-            }
-        })
-            // fade in quickly
-            .to(container, { autoAlpha: 1, duration: 0.2 }, 0)
-            // scrub frames
-            .to(
-                { frame: 0 },
-                {
-                    frame: totalFrames - 1,
-                    ease: "none",
-                    duration: 1, // normalized duration; real timing comes from scrub
-                    onUpdate() {
-                        const f = Math.round(this.targets()[0].frame);
-                        anim.goToAndStop(f, true);
-                    }
-                },
-                0
-            );
-    });
-}
-
-initStoryLottie();
-
-let counterInterval;
-
 function startCount() {
     const el = document.querySelector(".section-banner__counter .counter-text");
     if (!el) return;
@@ -2187,22 +1465,22 @@ function startCount() {
 
 // console.log(bannerEl.nextElementSibling)
 
-ScrollTrigger.create({
-    trigger: ".section-banner__counter",
-    start: "top 80%",
-    endTrigger: "#wink-section",
-    end: "bottom top",
-    // markers: true,
-    onEnter: startCount,
-    onEnterBack: startCount, // ok to re‐run, because we clear the old one
-    // onLeave: () => {
-    //   clearInterval(counterInterval); // stop it when you scroll past
-    //   document.querySelector('.counter-text').textContent = '';
-    // },
-    onLeave: () => clearInterval(counterInterval), // stop when bottom leaves
-    onLeaveBack: () => clearInterval(counterInterval),
-    invalidateOnRefresh: true
-});
+// ScrollTrigger.create({
+//     trigger: ".section-banner__counter",
+//     start: "top 80%",
+//     endTrigger: "#wink-section",
+//     end: "bottom top",
+//     // markers: true,
+//     onEnter: startCount,
+//     onEnterBack: startCount, // ok to re‐run, because we clear the old one
+//     // onLeave: () => {
+//     //   clearInterval(counterInterval); // stop it when you scroll past
+//     //   document.querySelector('.counter-text').textContent = '';
+//     // },
+//     onLeave: () => clearInterval(counterInterval), // stop when bottom leaves
+//     onLeaveBack: () => clearInterval(counterInterval),
+//     invalidateOnRefresh: true
+// });
 
 function initScrollingSlider() {
     const sliderSection = document.querySelector(".n_scrolling-slider");
@@ -2318,86 +1596,6 @@ function animateLogoMark(block, wrapper) {
     // return;
 }
 
-// initScrollingSlider();
-
-// n_section-header
-
-// gsap.utils.toArray(".section-fade-up").forEach((section) => {
-//     // console.log(section)
-//     let parentBanner = section.closest(".section-banner");
-//     let hasParentBanner = parentBanner ? true : false;
-//     // if (parentBanner) {
-//     //   console.log('has parentBanner')
-
-//     //   console.log(parentBanner)
-
-//     // } else {
-//     //   console.log(`no parent banner`)
-//     // }
-//     // console.log(hasParentBanner)
-//     let startFrom = hasParentBanner ? "top 10%" : "top top";
-//     let toggleAct = hasParentBanner ? "play reverse play reverse" : "play none play complete";
-//     gsap.fromTo(
-//         section,
-//         { opacity: 0, y: 50 }, // start
-//         {
-//             opacity: 1,
-//             y: 0,
-//             duration: 0.5,
-//             ease: "power2.out",
-//             scrollTrigger: {
-//                 trigger: hasParentBanner ? parentBanner : section,
-//                 // start: "top 80%", // reveal when near 80% viewport
-//                 start: startFrom,
-//                 // toggleActions: "play none play complete",
-//                 toggleActions: toggleAct
-//                 // markers: true,
-//                 // scrub: true
-//             }
-//         }
-//     );
-// });
-
-// const sectionHeaders = document.querySelectorAll(".n_section-header");
-// // console.log(`sectionHeaders`)
-// // console.log(sectionHeaders)
-// sectionHeaders.forEach((section, i) => {
-//     let header = section.querySelector(".n_section-header__title");
-//     let number = section.querySelector(".n_section-header__number");
-
-//     gsap.set(header, {
-//         color: "#E10600"
-//     });
-//     gsap.set([header, number], {
-//         opacity: 0,
-//         yPercent: 30
-//     });
-
-//     let tl = gsap.timeline({
-//         scrollTrigger: {
-//             trigger: section,
-//             start: "top 40%",
-//             end: "bottom center",
-//             toggleActions: "play none none reset"
-//         }
-//     });
-
-//     tl.to([header, number], {
-//         opacity: 1,
-//         yPercent: 0,
-//         duration: 0.75,
-//         ease: "power4.out",
-//         stagger: 0.12
-//     });
-//     tl.to(
-//         header,
-//         {
-//             color: "#FFFFFF"
-//         },
-//         "<"
-//     );
-// });
-
 function waitForFonts(timeout = 5000) {
     if (!document.fonts || document.fonts.status === "loaded") return Promise.resolve();
     return Promise.race([
@@ -2425,25 +1623,23 @@ function waitForVideos(selectors = ".n_header video, .page-header video", timeou
     ]);
 }
 
+if ("scrollRestoration" in history) {
+    history.scrollRestoration = "manual";
+}
 async function init() {
     await waitForFonts();
     await waitForVideos();
 
     initPageSlider();
 
-    // initTextRevealSections();
-    // initFanSansLottie();
-    // initColorPanels();
-    // initStackedSliders();
-    // initBigSliderAnimations();
-    // initScrollingSlider();
-    // wireNav();
-
     // Display the body
     document.querySelector("body").style.display = "block";
 
     // Fade in the body after scripts load
     gsap.fromTo("body", { opacity: 0 }, { opacity: 1, duration: 0.5 });
+
+    ScrollTrigger.sort();
+    ScrollTrigger.refresh();
 }
 
 window.addEventListener("load", init);
@@ -2454,6 +1650,6 @@ setTimeout(() => {
 }, 600);
 
 // extra refresh when fonts report late (Safari, etc.)
-Promise.resolve(document.fonts?.ready).finally(() =>
-    requestAnimationFrame(() => ScrollTrigger.refresh())
-);
+Promise.resolve(document.fonts?.ready).finally(() => {
+    requestAnimationFrame(() => ScrollTrigger.refresh());
+});
