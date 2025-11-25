@@ -627,6 +627,131 @@ function initVideoTextScrub(wrapper) {
     masterTl.add(videoTl);
 }
 
+function createVideoTextScrubTimeline(wrapper) {
+    const panels = gsap.utils.toArray(
+        wrapper.querySelectorAll(".ripple-gradient__bg-wrapper .ripple-gradient")
+    );
+    const total = panels.length;
+
+    gsap.set(panels, { xPercent: (i) => (i === 0 ? 0 : 100) });
+
+    const prevVid = panels[0]?.querySelector("video");
+    const curVid = panels[1]?.querySelector("video");
+    gsap.set([prevVid, curVid], { xPercent: 0 });
+
+    const video = wrapper.querySelector("video");
+    const blocks = gsap.utils.toArray(wrapper.querySelectorAll(".n_text-reveal__block"));
+    const totalBlocks = blocks.length;
+
+    if (video) {
+        video.preload = "metadata";
+        video.playsInline = true;
+        video.muted = true;
+    }
+
+    // NO scrollTrigger, NO paused
+    const videoTextTl = gsap.timeline({
+        defaults: { ease: "none" }
+    });
+
+    // --- introTl (first 2 blocks) ---
+    const introTl = gsap.timeline();
+    blocks.slice(0, 2).forEach((block, blkIdx) => {
+        const headings = block.querySelectorAll(".n_text-reveal__heading");
+        headings.forEach((h1, hIdx) => {
+            const words = splitTextIntoWords(h1);
+            prepareWords(words);
+            const isLastHeading = hIdx === headings.length - 1;
+            const isLastBlock = blkIdx === 1;
+            introTl.add(createWordTimeline(words, "#ffffff", block, isLastBlock, isLastHeading));
+        });
+    });
+
+    // --- videoTl (rest of blocks + ripple swap) ---
+    const videoTl = gsap.timeline();
+
+    blocks.slice(2).forEach((block, i) => {
+        const blockIndex = i + 2; // real index in `blocks`
+        const headings = block.querySelectorAll(".n_text-reveal__heading");
+
+        if (blockIndex === 2 && total >= 2) {
+            videoTl.addLabel("rippleSwap");
+
+            videoTl.to(
+                panels[0],
+                {
+                    xPercent: -100,
+                    duration: 1,
+                    ease: "power4.inOut"
+                },
+                "rippleSwap"
+            );
+
+            videoTl.fromTo(
+                panels[1],
+                { xPercent: 100 },
+                {
+                    xPercent: 0,
+                    duration: 1,
+                    ease: "power4.inOut"
+                },
+                "rippleSwap"
+            );
+
+            if (prevVid) {
+                videoTl.to(
+                    prevVid,
+                    {
+                        xPercent: 50,
+                        duration: 1,
+                        ease: "power4.inOut"
+                    },
+                    "rippleSwap"
+                );
+            }
+            if (curVid) {
+                videoTl.fromTo(
+                    curVid,
+                    { xPercent: -50 },
+                    {
+                        xPercent: 0,
+                        duration: 1,
+                        ease: "power4.inOut"
+                    },
+                    "rippleSwap"
+                );
+            }
+        }
+
+        headings.forEach((h1, headingIndex) => {
+            const words = splitTextIntoWords(h1);
+            prepareWords(words);
+            const isLastBlock = blockIndex === totalBlocks - 1;
+            const isLastHeading = headingIndex === headings.length - 1;
+            const passLastHeading = isLastHeading && !isLastBlock;
+
+            const wordAnim = createWordTimeline(
+                words,
+                "#ffffff",
+                block,
+                isLastBlock,
+                passLastHeading
+            );
+
+            videoTl.add(wordAnim);
+        });
+    });
+
+    videoTextTl.add(introTl);
+    videoTextTl.add(videoTl);
+
+    // if you want it slower than the original scroll version:
+    // comment out if too slow.
+    videoTextTl.timeScale(0.9);
+
+    return videoTextTl;
+}
+
 function animateAnton(block) {
     let antonTl = gsap.timeline();
 
@@ -720,6 +845,199 @@ function animateAnton(block) {
     });
 
     return antonTl;
+}
+
+function animateInstrument(block) {
+    const heading = block.querySelector(".n_text-reveal__heading");
+    const specialContainer = block.querySelector(".n_text-reveal__special");
+    const lottieEl = block.querySelector("#instrument-lottie"); // Renamed to avoid confusion
+    const path = lottieEl.getAttribute("data-src");
+
+    const words = splitTextIntoWords(heading);
+
+    let instrumentTl = gsap.timeline();
+
+    instrumentTl.add(prepareWords(words));
+
+    gsap.set(specialContainer, {
+        yPercent: 100,
+        opacity: 0
+    });
+
+    instrumentTl.to(specialContainer, {
+        yPercent: 0,
+        opacity: 1
+    });
+
+    instrumentTl.add(animateWordsIn(words, "#ffffff"));
+
+    instrumentTl.add(animateWordsOut(words));
+
+    instrumentTl.to(specialContainer, {
+        yPercent: 100,
+        opacity: 0,
+        duration: 0.8,
+        ease: "power3.inOut"
+    });
+    instrumentTl.call(() => {
+        block.classList.remove("active");
+        block.style.zIndex = "0";
+    });
+
+    return instrumentTl;
+}
+
+function animateInter(block) {
+    const heading = block.querySelector(".n_text-reveal__heading");
+    const specialContainer = block.querySelector(".n_text-reveal__special");
+
+    const words = splitTextIntoWords(heading);
+    prepareWords(words);
+
+    let interTl = gsap.timeline();
+
+    gsap.set(specialContainer, {
+        yPercent: 100,
+        opacity: 0
+    });
+
+    interTl.to(specialContainer, {
+        yPercent: 0,
+        opacity: 1
+    });
+
+    interTl.add(animateWordsIn(words, "#ffffff"));
+
+    interTl.add(animateWordsOut(words));
+
+    interTl.to(specialContainer, {
+        yPercent: 100,
+        opacity: 0,
+        duration: 0.8,
+        ease: "power3.inOut"
+    });
+
+    interTl.call(() => {
+        block.classList.remove("active");
+        block.style.zIndex = "0";
+    });
+
+    return interTl;
+}
+
+function animateBk(block) {
+    const heading = block.querySelector(".n_text-reveal__heading");
+
+    const words = splitTextIntoWords(heading);
+
+    let specialTl = gsap.timeline();
+
+    specialTl.add(prepareWords(words));
+
+    specialTl.to(
+        block.closest(".n_text-reveal-section"),
+        {
+            background: "white",
+            duration: 1
+        }, // zero-duration set immediately
+        0 // position: at the very start of this block’s mini-timeline
+    );
+
+    specialTl.add(animateWordsIn(words, "#000000"));
+
+    specialTl.add(animateWordsOut(words));
+
+    specialTl.call(() => {
+        block.classList.remove("active");
+        block.style.zIndex = "0";
+    });
+
+    return specialTl;
+}
+
+function animateLikeThis(block, wrapper) {
+    const heading = block.querySelector(".n_text-reveal__heading");
+
+    const words = splitTextIntoWords(heading);
+
+    const extra = wrapper.querySelector(".special__split");
+    const typographyFans = wrapper.querySelector(".special__typography-fans");
+
+    gsap.set(extra, {
+        opacity: 0,
+        zIndex: -4
+    });
+
+    gsap.set(typographyFans, {
+        zIndex: -4,
+        clipPath: "inset(0% 100% 0% 0%)"
+    });
+
+    gsap.set(extra.querySelector(".special__split-row--top"), {
+        xPercent: -50
+    });
+    gsap.set(extra.querySelector(".special__split-row--bottom"), {
+        xPercent: 50
+    });
+    // let
+
+    let specialTl = gsap.timeline();
+
+    specialTl.add(prepareWords(words));
+
+    specialTl.to(extra, {
+        opacity: 1,
+        zIndex: 2
+    });
+    specialTl.to(extra.querySelector(".special__split-row--bottom"), {
+        xPercent: 0,
+        duration: 2
+    });
+    specialTl.to(
+        extra.querySelector(".special__split-row--top"),
+        {
+            xPercent: 0,
+            duration: 2
+        },
+        "<"
+    );
+
+    specialTl.to(extra, {
+        duration: 1
+    });
+    specialTl.to(extra.querySelector(".special__split-row--bottom"), {
+        xPercent: -100,
+        duration: 1
+    });
+    specialTl.to(
+        extra.querySelector(".special__split-row--top"),
+        {
+            xPercent: 100,
+            duration: 1
+        },
+        "<"
+    );
+    specialTl.set(extra, {
+        opacity: 0,
+        zIndex: -4
+    });
+
+    specialTl.add(animateWordsIn(words, "#000000"));
+
+    specialTl.add(animateWordsOut(words));
+
+    specialTl.to(typographyFans, {
+        clipPath: "inset(0% 0% 0% 0%)",
+        zIndex: 3,
+        duration: 1
+    });
+
+    specialTl.call(() => {
+        block.classList.remove("active");
+        block.style.zIndex = "0";
+    });
+
+    return specialTl;
 }
 
 // 1 FIND TEXT REVEAL SECTIONS
@@ -1247,41 +1565,40 @@ function initStackedSliders() {
         stackedSlider(section);
     });
 }
-
-function setupBigSlider(wrapper) {
-    // 1) Each “panel” is the .n_big-slide element
+function createBigSliderTimeline(wrapper) {
+    // each “panel” is the .n_big-slide element
     const panels = gsap.utils.toArray(wrapper.querySelectorAll(".n_big-slide"));
     const total = panels.length;
+    if (!total) return gsap.timeline(); // safety
 
-    // 2) Inside each panel we’ll animate both the <img> and the panel
+    // inside each panel we’ll animate the image
     const imgs = panels.map((p) => p.querySelector(".n_big-slide_img"));
 
-    // 4) Build a scrubbed, pinned timeline: one viewport per slide
-    const tl = gsap.timeline({
-        scrollTrigger: {
-            trigger: wrapper,
-            pin: true,
-            scrub: 1,
-            // markers: true,
-            start: "top top",
-            end: `+=${(total - 1) * window.innerHeight}`,
-            snap: 1 / (total - 1)
-        }
+    // initial positions (match scroll version behavior)
+    panels.forEach((panel, i) => {
+        gsap.set(panel, { xPercent: i === 0 ? 0 : 100 });
+    });
+    imgs.forEach((img, i) => {
+        if (!img) return;
+        gsap.set(img, { xPercent: i === 0 ? 0 : -100 });
     });
 
-    // 5) Sequence: slide out the old panel/image, bring in the new
-    panels.forEach((panel, i) => {
-        if (i === 0) return; // skip first panel
+    // pure timeline, NO scrollTrigger
+    const tl = gsap.timeline({
+        defaults: { ease: "power4.inOut" }
+    });
 
-        const prev = panels[i - 1],
-            prevImg = imgs[i - 1],
-            curImg = imgs[i];
+    panels.forEach((panel, i) => {
+        if (i === 0) return; // first is already in view
+
+        const prev = panels[i - 1];
+        const prevImg = imgs[i - 1];
+        const curImg = imgs[i];
 
         // 1) slide the old container out to the left
         tl.to(prev, {
             xPercent: -100,
-            duration: 1,
-            ease: "power4.inOut"
+            duration: 1
         });
 
         // 2) push that old image out to the right
@@ -1290,41 +1607,107 @@ function setupBigSlider(wrapper) {
                 prevImg,
                 {
                     xPercent: 100,
-                    duration: 1,
-                    ease: "power4.inOut"
+                    duration: 1
                 },
                 "<"
             );
         }
 
         // 3) pull the new container in from the right
-        tl.fromTo(
-            panel,
-            { xPercent: 100 },
-            { xPercent: 0, duration: 1, ease: "power4.inOut" },
-            "<"
-        );
+        tl.fromTo(panel, { xPercent: 100 }, { xPercent: 0, duration: 1 }, "<");
+
         // 4) pull its image in from the left
         if (curImg) {
-            tl.fromTo(
-                curImg,
-                { xPercent: -100 },
-                { xPercent: 0, duration: 1, ease: "power4.inOut" },
-                "<"
-            );
+            tl.fromTo(curImg, { xPercent: -100 }, { xPercent: 0, duration: 1 }, "<");
         }
     });
+
+    // optional: slow the whole thing down
+    tl.timeScale(0.2);
+
+    return tl;
 }
+// function setupBigSlider(wrapper) {
+//     // 1) Each “panel” is the .n_big-slide element
+//     const panels = gsap.utils.toArray(wrapper.querySelectorAll(".n_big-slide"));
+//     const total = panels.length;
+
+//     // 2) Inside each panel we’ll animate both the <img> and the panel
+//     const imgs = panels.map((p) => p.querySelector(".n_big-slide_img"));
+
+//     // 4) Build a scrubbed, pinned timeline: one viewport per slide
+//     const tl = gsap.timeline({
+//         scrollTrigger: {
+//             trigger: wrapper,
+//             pin: true,
+//             scrub: 1,
+//             // markers: true,
+//             start: "top top",
+//             end: `+=${(total - 1) * window.innerHeight}`,
+//             snap: 1 / (total - 1)
+//         }
+//     });
+
+//     // 5) Sequence: slide out the old panel/image, bring in the new
+//     panels.forEach((panel, i) => {
+//         if (i === 0) return; // skip first panel
+
+//         const prev = panels[i - 1],
+//             prevImg = imgs[i - 1],
+//             curImg = imgs[i];
+
+//         // 1) slide the old container out to the left
+//         tl.to(prev, {
+//             xPercent: -100,
+//             duration: 1,
+//             ease: "power4.inOut"
+//         });
+
+//         // 2) push that old image out to the right
+//         if (prevImg) {
+//             tl.to(
+//                 prevImg,
+//                 {
+//                     xPercent: 100,
+//                     duration: 1,
+//                     ease: "power4.inOut"
+//                 },
+//                 "<"
+//             );
+//         }
+
+//         // 3) pull the new container in from the right
+//         tl.fromTo(
+//             panel,
+//             { xPercent: 100 },
+//             { xPercent: 0, duration: 1, ease: "power4.inOut" },
+//             "<"
+//         );
+//         // 4) pull its image in from the left
+//         if (curImg) {
+//             tl.fromTo(
+//                 curImg,
+//                 { xPercent: -100 },
+//                 { xPercent: 0, duration: 1, ease: "power4.inOut" },
+//                 "<"
+//             );
+//         }
+//     });
+// }
 
 function initBigSliderAnimations() {
     gsap.utils.toArray(".n_big-slider_wrapper").forEach(setupPageSlider);
 }
 // 11.20.25 notes
-// fix split text banner styling
+// weird bug where it will stop scrolling if i dont hard refresh. the gs dev tool bar is longer than where it stops so it is aware of the scroll but the page isnt scrolling. maybe something to do with the snap? bc it stopped on fans sans section which is a special section.
+// okay refreshed without hard refresh and it is stuck in fans sans again BUT it scrolls down a little futher than last reload but then it snaps back up.
+// update. it stopped at the fanatics logo section. so maybe not a snap issue?
+// update: stopped at fanatics logo again
 // make accordion tabbable
 
 //done
 // text reveal doesnt animate first block
+// fix split text banner styling
 
 // < // start at the beginning of prev tween
 // +2 // start 2 seconds after the end of prev tween
@@ -1335,7 +1718,20 @@ function setupPageSlider(wrapper) {
     const slides = gsap.utils.toArray(wrapper.querySelectorAll(".slide"));
     const total = slides.length;
 
-    const SLIDE_DURATION = 5; // seconds per slide
+    // Collect all big-slider segments
+    // collect all big sliders (supports >1)
+    const bigSliders = slides
+        .map((slide, index) => {
+            const wrapper = slide.querySelector(".n_big-slider");
+            if (!wrapper) return null;
+
+            const panels = gsap.utils.toArray(wrapper.querySelectorAll(".n_big-slide"));
+            return {
+                index,
+                panelCount: panels.length
+            };
+        })
+        .filter(Boolean);
 
     const tops = slides.map((slide) =>
         ScrollTrigger.create({
@@ -1357,81 +1753,19 @@ function setupPageSlider(wrapper) {
             markers: true,
             start: "top top",
             end: `+=${(total - 1) * window.innerHeight * 2}`,
-            // added 11.21.25, should update to tolerate timeline changes so it doesnt just cache once
-            snap: (rawProgress) => {
-                // Rebuild normalized label positions on every call
-                const labels = slides
-                    .map((_, i) => tl.labels[`slide-${i}`] / tl.duration())
-                    .sort((a, b) => a - b);
-
-                // Find which segment (slide) we're in: [labels[i], labels[i+1]]
-                let segIndex = 0;
-                for (let i = 0; i < labels.length - 1; i++) {
-                    if (rawProgress >= labels[i] && rawProgress < labels[i + 1]) {
-                        segIndex = i;
-                        break;
-                    }
-                }
-
-                const segStart = labels[segIndex];
-                const segEnd = labels[segIndex + 1] ?? 1;
-                const segLen = segEnd - segStart;
-
-                const hasTextReveal = !!slides[segIndex].querySelector(".n_text-reveal-section");
-                const isAccordion = !!slides[segIndex].querySelector(".n_scroll-accordion");
-                const isSpecialSlide = hasTextReveal || isAccordion;
-
-                // NORMAL SLIDES
-                if (!isSpecialSlide) {
-                    const GLOBAL_THRESHOLD = 0.08;
-
-                    let closest = labels[0];
-                    labels.forEach((p) => {
-                        if (Math.abs(p - rawProgress) < Math.abs(closest - rawProgress)) {
-                            closest = p;
-                        }
-                    });
-
-                    if (Math.abs(closest - rawProgress) < GLOBAL_THRESHOLD) {
-                        return closest;
-                    }
-
-                    return rawProgress;
-                }
-
-                // TEXT-REVEAL / ACCORDION SLIDES: only snap near edges
-                const EDGE_PORTION = 0.2;
-
-                const leftSnapEnd = segStart + segLen * EDGE_PORTION;
-                const rightSnapStart = segEnd - segLen * EDGE_PORTION;
-
-                if (rawProgress > leftSnapEnd && rawProgress < rightSnapStart) {
-                    return rawProgress;
-                }
-
-                const distToStart = Math.abs(rawProgress - segStart);
-                const distToEnd = Math.abs(rawProgress - segEnd);
-                const target = distToStart < distToEnd ? segStart : segEnd;
-
-                const LOCAL_THRESHOLD = segLen * 0.4;
-                if (Math.abs(rawProgress - target) < LOCAL_THRESHOLD) {
-                    return target;
-                }
-
-                return rawProgress;
+            onUpdate: (self) => {
+                console.log("[ST update]", {
+                    progress: Number(self.progress.toFixed(4)),
+                    scroll: self.scroll(),
+                    direction: self.direction
+                });
             },
+            // added 11.21.25, should update to tolerate timeline changes so it doesnt just cache once
             // snap: (rawProgress) => {
-            //     // Build normalized label positions once
-            //     if (!tl._labelProgress) {
-            //         tl._labelProgress = slides
-            //             .map((_, i) => {
-            //                 const t = tl.labels[`slide-${i}`];
-            //                 return t / tl.duration(); // 0–1
-            //             })
-            //             .sort((a, b) => a - b);
-            //     }
-
-            //     const labels = tl._labelProgress;
+            //     // Rebuild normalized label positions on every call
+            //     const labels = slides
+            //         .map((_, i) => tl.labels[`slide-${i}`] / tl.duration())
+            //         .sort((a, b) => a - b);
 
             //     // Find which segment (slide) we're in: [labels[i], labels[i+1]]
             //     let segIndex = 0;
@@ -1446,19 +1780,71 @@ function setupPageSlider(wrapper) {
             //     const segEnd = labels[segIndex + 1] ?? 1;
             //     const segLen = segEnd - segStart;
 
-            //     // Does THIS slide have a text reveal?
+            //     const slide = slides[segIndex];
+
+            //     // // Check for big slider
+
+            //     // --- BIG SLIDER INTERNAL SNAP ---
+            //     const activeBig = bigSliders.find((b) => b.index === segIndex);
+            //     if (activeBig && activeBig.panelCount > 1) {
+            //         const slideLabel = `slide-${segIndex}`;
+            //         const inPlaceLabel = `${slideLabel}-in-place`;
+
+            //         // region where the big slider is actually "in place"
+            //         const internalStart =
+            //             (tl.labels[inPlaceLabel] ?? tl.labels[slideLabel]) / tl.duration();
+            //         const internalEnd = segEnd;
+            //         const internalLen = internalEnd - internalStart;
+
+            //         if (internalLen > 0) {
+            //             const steps = activeBig.panelCount - 1;
+            //             const internalSnapPoints = [];
+
+            //             // only internal transitions, not the very start of the slide
+            //             for (let j = 1; j <= steps; j++) {
+            //                 const t = j / activeBig.panelCount; // 0..1 within big slider region
+            //                 internalSnapPoints.push(internalStart + t * internalLen);
+            //             }
+
+            //             let closest = internalSnapPoints[0];
+            //             internalSnapPoints.forEach((p) => {
+            //                 if (Math.abs(p - rawProgress) < Math.abs(closest - rawProgress)) {
+            //                     closest = p;
+            //                 }
+            //             });
+
+            //             const INTERNAL_THRESHOLD = internalLen * 0.4; // tweak stickiness
+            //             if (Math.abs(closest - rawProgress) < INTERNAL_THRESHOLD) {
+            //                 return closest;
+            //             }
+            //         }
+
+            //         // fall through to normal/special behavior if not inside the big-slider band
+            //     }
+
             //     const hasTextReveal = !!slides[segIndex].querySelector(".n_text-reveal-section");
             //     const isAccordion = !!slides[segIndex].querySelector(".n_scroll-accordion");
+            //     const hasFansSection = !!slides[segIndex].querySelector(".section-fans");
+            //     const isColorsSection = !!slides[segIndex].querySelector(".colors-wrapper");
+            //     const rippleGradient =
+            //         slides[segIndex].getAttribute("data-element") === "ripple-gradient";
+            //     const isBigSlider = !!slides[segIndex].querySelector(".n_big-slider_wrapper");
+            //     // console.log('hasTextReveal', hasTextReveal);
+            //     // console.log('found big slider?', isBigSlider);
+            //     // console.log('rippleGradient', rippleGradient);
+            //     // console.log('isColorsSection', isColorsSection);
 
-            //     const isSpecialSlide = hasTextReveal || isAccordion;
+            //     const isSpecialSlide =
+            //         hasTextReveal ||
+            //         isAccordion ||
+            //         hasFansSection ||
+            //         isColorsSection ||
+            //         rippleGradient;
 
-            //     // ─────────────────────────────────────
-            //     // CASE 1: Normal slide -> normal snapping
-            //     // ─────────────────────────────────────
+            //     // NORMAL SLIDES
             //     if (!isSpecialSlide) {
-            //         const GLOBAL_THRESHOLD = 0.08; // 8% of total
+            //         const GLOBAL_THRESHOLD = 0.08;
 
-            //         // Nearest label to current progress
             //         let closest = labels[0];
             //         labels.forEach((p) => {
             //             if (Math.abs(p - rawProgress) < Math.abs(closest - rawProgress)) {
@@ -1466,7 +1852,6 @@ function setupPageSlider(wrapper) {
             //             }
             //         });
 
-            //         // Only snap if reasonably close
             //         if (Math.abs(closest - rawProgress) < GLOBAL_THRESHOLD) {
             //             return closest;
             //         }
@@ -1474,27 +1859,21 @@ function setupPageSlider(wrapper) {
             //         return rawProgress;
             //     }
 
-            //     // ─────────────────────────────────────
-            //     // CASE 2: Slide WITH text reveal
-            //     // Only snap near edges, not in the middle
-            //     // ─────────────────────────────────────
-            //     const EDGE_PORTION = 0.2; // 20% of this slide's segment per side
+            //     // TEXT-REVEAL / ACCORDION SLIDES: only snap near edges
+            //     const EDGE_PORTION = 0.2;
 
             //     const leftSnapEnd = segStart + segLen * EDGE_PORTION;
             //     const rightSnapStart = segEnd - segLen * EDGE_PORTION;
 
-            //     // Middle 60% of this slide => NO snapping at all
             //     if (rawProgress > leftSnapEnd && rawProgress < rightSnapStart) {
             //         return rawProgress;
             //     }
 
-            //     // Near edges -> snap to THIS slide's start or end
             //     const distToStart = Math.abs(rawProgress - segStart);
             //     const distToEnd = Math.abs(rawProgress - segEnd);
             //     const target = distToStart < distToEnd ? segStart : segEnd;
 
-            //     // Optional local guard: don't snap from super far away
-            //     const LOCAL_THRESHOLD = segLen * 0.4; // up to 40% of this segment
+            //     const LOCAL_THRESHOLD = segLen * 0.4;
             //     if (Math.abs(rawProgress - target) < LOCAL_THRESHOLD) {
             //         return target;
             //     }
@@ -1516,6 +1895,9 @@ function setupPageSlider(wrapper) {
         const fadeUps = slide.querySelectorAll(".slide-fade-up");
         const scrollAccordionEl = slide.querySelector(".n_scroll-accordion");
         const fansSection = slide.querySelector(".section-fans");
+        const colorsSection = slide.querySelector(".colors-wrapper");
+        const rippleGradient = wrapper.getAttribute("data-element") === "ripple-gradient";
+        const bigSliderWrapper = slide.querySelector(".n_big-slider");
 
         const label = `slide-${i}`;
         tl.addLabel(label);
@@ -1538,16 +1920,24 @@ function setupPageSlider(wrapper) {
                 duration: 4,
                 ease: "power4.inOut"
             });
-             // 3) pull the new container in from below
+            // 3) pull the new container in from below
             tl.fromTo(
                 slide,
                 { yPercent: 100 },
                 { yPercent: 0, ease: "power4.inOut", duration: 4 },
                 label
-            );            
+            );
         }
 
-       
+        const slideInPlaceLabel = `${label}-in-place`;
+
+        if (i > 0) {
+            tl.addLabel(slideInPlaceLabel, `>`);
+        } else {
+            // first slide is already in view, so content can start at the slide label
+            tl.add(slideInPlaceLabel, label);
+        }
+
         // if (i > 0) {
 
         // }
@@ -1586,28 +1976,77 @@ function setupPageSlider(wrapper) {
             addDotAnimation(dotWrapper, tl, label, 3.7);
         }
 
-        // 0439 11.21.25 not sure i like this and text reveal offset. it feels dangerous bc they could overlap instead of sequencing properly
-        // fans section animation
         if (fansSection) {
-            const SLIDE_TRANSITION_DURATION = i > 0 ? 4 : 0;
-            // const LOTTIE_OFFSET = SLIDE_TRANSITION_DURATION + 0.2;
             const LOTTIE_OFFSET = 0.2;
-            setupFanSansLottie(slide, tl, label, LOTTIE_OFFSET);
+
+            // 1) hook Lottie to the content label for THIS slide
+            setupFanSansLottie(slide, tl, slideInPlaceLabel, i, LOTTIE_OFFSET);
+
+            // 2) ensure this slide's segment is long enough so Lottie isn't hyper-fast
+            const FANS_MIN_SEGMENT = 10; // tweak this number to slow/speed Lottie
+
+            const slideStart = tl.labels[label];
+            const currentEnd = tl.duration();
+            const currentLen = currentEnd - slideStart;
+
+            if (currentLen < FANS_MIN_SEGMENT) {
+                const pad = FANS_MIN_SEGMENT - currentLen;
+                tl.to({}, { duration: pad }); // dummy tween to extend this slide's window
+            }
         }
 
         if (scrollAccordionEl) {
             // initialize scroll accordion inside the slide
             addScrollAccordionAnimation(scrollAccordionEl, tl, label, 1);
         }
+
+        if (colorsSection) {
+            addColorPanelsAnimation(slide, tl, slideInPlaceLabel, 0.2);
+        }
+
+        if (bigSliderWrapper) {
+            const BIG_OFFSET = 0.2; // start slightly after slide is in place
+            const bigTl = createBigSliderTimeline(bigSliderWrapper);
+
+            tl.add(bigTl, `${slideInPlaceLabel}+=${BIG_OFFSET}`);
+        }
     });
     GSDevTools.create({ animation: tl });
 }
+let pageSliderTl = null;
 
+// did not work
+// function initPageSlider() {
+//     // kill old timeline if it exists
+//     if (pageSliderTl) {
+//         if (pageSliderTl.scrollTrigger) {
+//             pageSliderTl.scrollTrigger.kill();
+//         }
+//         pageSliderTl.kill();
+//         pageSliderTl = null;
+//     }
+
+//     // kill old ScrollTriggers with id "page-slider"
+//     ScrollTrigger.getAll().forEach((st) => {
+//         if (st.vars && st.vars.id === "page-slider") {
+//             st.kill();
+//         }
+//     });
+
+//     // build new timeline
+//     gsap.utils.toArray(".slider-wrapper").forEach((wrapper) => {
+//         pageSliderTl = setupPageSlider(wrapper);
+//     });
+
+//     // refresh ScrollTrigger
+//     ScrollTrigger.refresh();
+// }
 function initPageSlider() {
     gsap.utils.toArray(".slider-wrapper").forEach(setupPageSlider);
 }
+function setupFanSansLottie(slide, tl, contentLabel, slideIndex, offsetSeconds = 0) {
+    console.log("setupFanSansLottie called for label:", contentLabel);
 
-function setupFanSansLottie(slide, tl, label, offsetSeconds = 0) {
     const section = slide.matches(".section-fans") ? slide : slide.querySelector(".section-fans");
     if (!section) return;
 
@@ -1621,13 +2060,10 @@ function setupFanSansLottie(slide, tl, label, offsetSeconds = 0) {
     let currentFrame = 0;
     let lastActiveIndex = -1;
     let bgRevealed = false;
-
-    let accessibleFrame = section.querySelector(".section-fans__text").dataset.frame;
+    const accessibleFrame = section.querySelector(".section-fans__text").dataset.frame;
 
     setMinHeight(textWrapper, textBlocks);
-    window.addEventListener("resize", () => {
-        setMinHeight(textWrapper, textBlocks);
-    });
+    window.addEventListener("resize", () => setMinHeight(textWrapper, textBlocks));
 
     gsap.set(backgroundDivs, { opacity: 0 });
 
@@ -1647,12 +2083,10 @@ function setupFanSansLottie(slide, tl, label, offsetSeconds = 0) {
         path: "https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/685456f50615bd9f4e88f274_FanSans_Animation3_cleaned.json"
     });
 
-    // fix blinking issue
     lottieAnimation.addEventListener("data_ready", () => {
         lottieAnimation.setSubframe(false);
     });
 
-    // 1. Trigger text changes based on frame (same logic as before)
     const frameTriggers = Array.from(textBlocks).map((el, index) => ({
         frame: parseInt(el.dataset.frame, 10),
         el,
@@ -1712,21 +2146,42 @@ function setupFanSansLottie(slide, tl, label, offsetSeconds = 0) {
         }
     });
 
-    // 2. When Lottie data is ready, wire it into the *slider timeline*
     lottieAnimation.addEventListener("DOMLoaded", () => {
         const totalFrames = lottieAnimation.totalFrames;
+
+        // console.log("FanSans DOMLoaded for", contentLabel);
+
+        const contentStart = tl.labels[contentLabel] + offsetSeconds;
+        const slideStartLabel = `slide-${slideIndex}`;
+        const nextSlideLabel = `slide-${slideIndex + 1}`;
+
+        const slideStart = tl.labels[slideStartLabel];
+        const slideEnd =
+            typeof tl.labels[nextSlideLabel] === "number"
+                ? tl.labels[nextSlideLabel]
+                : tl.duration();
+
+        const END_PADDING = 0.2;
+        let lottieDur = slideEnd - contentStart - END_PADDING;
+        if (lottieDur < 0.3) lottieDur = 0.3;
+
+        // console.log({
+        //     contentStart,
+        //     slideStart,
+        //     slideEnd,
+        //     lottieDur
+        // });
 
         const lottieTween = gsap.to(lottieAnimation, {
             frame: totalFrames - 1,
             ease: "none",
-            duration: 5, // <<< how long you want within this slide
+            duration: lottieDur,
             onUpdate() {
                 lottieAnimation.goToAndStop(lottieAnimation.frame, true);
             }
         });
 
-        // stick the tween into the main slider timeline at this slide's label
-        tl.add(lottieTween, `${label}+=${offsetSeconds}`);
+        tl.add(lottieTween, contentStart);
     });
 }
 
@@ -1889,6 +2344,351 @@ function addScrollAccordionAnimation(accordionRoot, tl, label, offset = 1) {
     );
 }
 
+function addColorPanelsAnimation(slide, masterTl, label, offset = 0.2) {
+    // match old selector semantics, just scoped to this slide
+    const panels = gsap.utils.toArray(slide.querySelectorAll(".color-panel"));
+
+    if (!panels.length) return;
+
+    // === same logic as old updateActivePanel ===
+    function updateActivePanel(progress) {
+        let activeIndex = Math.round(progress * panels.length - 0.5);
+
+        // Ensure the last panel stays active at the end
+        if (activeIndex >= panels.length - 1) {
+            activeIndex = panels.length - 1; // Keep last panel active
+        }
+
+        panels.forEach((panel, index) => {
+            if (index === activeIndex) {
+                panel.classList.add("active");
+            } else {
+                panel.classList.remove("active");
+            }
+        });
+    }
+
+    // build local timeline, then wire onUpdate (so we can reference localTl)
+    const localTl = gsap.timeline();
+
+    localTl.eventCallback("onUpdate", () => {
+        updateActivePanel(localTl.progress());
+    });
+
+    // === same tween structure as OLD initColorPanels ===
+    panels.forEach((panel, index) => {
+        const isLast = index === panels.length - 1;
+        const nextPanel = isLast ? null : panels[index + 1];
+        const currentContent = panel.querySelector(".colors-content");
+        const nextContent = nextPanel ? nextPanel.querySelector(".colors-content") : null;
+
+        if (!isLast) {
+            // content clip
+            localTl.to(currentContent, {
+                clipPath: "inset(0 100% 0 0)", // from fully visible to clipped
+                duration: 0.2, // same as old
+                ease: "expo.inOut"
+            });
+
+            // shrink current panel (no explicit duration in old => 0.5 default)
+            localTl.to(panel, {
+                width: "5%",
+                ease: "expo.out"
+            });
+
+            // grow next panel
+            localTl.to(
+                nextPanel,
+                {
+                    width: "100%", // Expand next panel
+                    ease: "expo.out",
+                    onStart: () => {
+                        nextPanel.classList.add("active");
+                        if (nextContent) {
+                            // currentContent.classList.remove("hide");
+                            // nextContent.classList.add("show");
+                        }
+                    }
+                },
+                "<" // sync like old
+            );
+        } else {
+            // last panel
+            localTl.to(panel, {
+                width: "100%",
+                duration: 0.5, // same as old
+                ease: "expo.inOut"
+            });
+        }
+    });
+
+    // === globally slow the old behavior down ===
+    // 0.3 = ~3.3x slower; tweak to taste (0.5 = 2x slower, 0.2 = 5x slower)
+    // 0439 LOVE time scale
+    localTl.timeScale(0.3);
+
+    // plug into master slider tl
+    masterTl.add(localTl, `${label}+=${offset}`);
+}
+
+// function addColorPanelsAnimation(slide, masterTl, label, offset = 0.2) {
+//     const panels = gsap.utils.toArray(
+//         slide.querySelectorAll(".color-panel")
+//     );
+
+//     if (!panels.length) return;
+
+//     const COLOR_MIN_SEGMENT = 18; // <<< make this bigger to slow the whole slide down
+
+//     const localTl = gsap.timeline({
+//         onUpdate: () => {
+//             const progress = localTl.progress();
+//             let activeIndex = Math.round(progress * panels.length - 0.5);
+
+//             if (activeIndex >= panels.length) {
+//                 activeIndex = panels.length - 1;
+//             }
+
+//             panels.forEach((panel, index) => {
+//                 panel.classList.toggle("active", index === activeIndex);
+//             });
+//         }
+//     });
+
+//     panels.forEach((panel, index) => {
+//         const isLast = index === panels.length - 1;
+//         const nextPanel = isLast ? null : panels[index + 1];
+//         const currentContent = panel.querySelector(".colors-content");
+//         const nextContent = nextPanel
+//             ? nextPanel.querySelector(".colors-content")
+//             : null;
+
+//         if (!isLast) {
+//             // SLOW THESE DOWN
+//             localTl.to(currentContent, {
+//                 clipPath: "inset(0 100% 0 0)",
+//                 duration: 3,          // was 0.2
+//                 ease: "expo.inOut"
+//             });
+
+//             localTl.to(
+//                 panel,
+//                 {
+//                     width: "5%",
+//                     duration: 3,       // add duration, not just ease
+//                     ease: "expo.out"
+//                 },
+//                 "<"
+//             );
+
+//             localTl.to(
+//                 nextPanel,
+//                 {
+//                     width: "100%",
+//                     duration:3,       // add duration
+//                     ease: "expo.out",
+//                     onStart: () => {
+//                         nextPanel.classList.add("active");
+//                         // if (nextContent) { ... }
+//                     }
+//                 },
+//                 "<"
+//             );
+//         } else {
+//             localTl.to(panel, {
+//                 width: "100%",
+//                 duration: 3.0,          // was 0.5
+//                 ease: "expo.inOut"
+//             });
+//         }
+//     });
+
+//     // plug into master timeline
+//     masterTl.add(localTl, `${label}+=${offset}`);
+
+//     // --- EXACT SAME PATTERN AS FANS_MIN_SEGMENT ---
+//     const slideStart = masterTl.labels[label];
+//     const currentEnd = masterTl.duration();
+//     const currentLen = currentEnd - slideStart;
+
+//     if (currentLen < COLOR_MIN_SEGMENT) {
+//         const pad = COLOR_MIN_SEGMENT - currentLen;
+//         masterTl.to({}, { duration: pad }); // dummy tween to stretch this slide
+//     }
+// }
+// function addColorPanelsAnimation(slide, masterTl, label, offset = 0.2) {
+//     console.log('adding colors ani')
+//     const panels = gsap.utils.toArray(
+//         slide.querySelectorAll(".color-panel")
+//     );
+
+//     if (!panels.length) return;
+
+//     const COLOR_MIN_SEGMENT = 14; // <<< make this bigger to slow the whole slide down
+
+//     const localTl = gsap.timeline({
+//         onUpdate: () => {
+//             const progress = localTl.progress();
+//             let activeIndex = Math.round(progress * panels.length - 0.5);
+
+//             if (activeIndex >= panels.length) {
+//                 activeIndex = panels.length - 1;
+//             }
+
+//             panels.forEach((panel, index) => {
+//                 panel.classList.toggle("active", index === activeIndex);
+//             });
+//         }
+//     });
+
+//     panels.forEach((panel, index) => {
+//         const isLast = index === panels.length - 1;
+//         const nextPanel = isLast ? null : panels[index + 1];
+//         const currentContent = panel.querySelector(".colors-content");
+//         const nextContent = nextPanel
+//             ? nextPanel.querySelector(".colors-content")
+//             : null;
+
+//         if (!isLast) {
+//             // SLOW THESE DOWN
+//             localTl.to(currentContent, {
+//                 clipPath: "inset(0 100% 0 0)",
+//                 duration: 0.6,          // was 0.2
+//                 ease: "expo.inOut"
+//             });
+
+//             localTl.to(
+//                 panel,
+//                 {
+//                     width: "5%",
+//                     duration: 0.8,       // add duration, not just ease
+//                     ease: "expo.out"
+//                 },
+//                 "<"
+//             );
+
+//             localTl.to(
+//                 nextPanel,
+//                 {
+//                     width: "100%",
+//                     duration: 0.8,       // add duration
+//                     ease: "expo.out",
+//                     onStart: () => {
+//                         nextPanel.classList.add("active");
+//                         // if (nextContent) { ... }
+//                     }
+//                 },
+//                 "<"
+//             );
+//         } else {
+//             localTl.to(panel, {
+//                 width: "100%",
+//                 duration: 1.0,          // was 0.5
+//                 ease: "expo.inOut"
+//             });
+//         }
+//     });
+
+//     // plug into master timeline
+//     masterTl.add(localTl, `${label}+=${offset}`);
+
+//     // --- EXACT SAME PATTERN AS FANS_MIN_SEGMENT ---
+//     const slideStart = masterTl.labels[label];
+//     const currentEnd = masterTl.duration();
+//     const currentLen = currentEnd - slideStart;
+
+//     if (currentLen < COLOR_MIN_SEGMENT) {
+//         const pad = COLOR_MIN_SEGMENT - currentLen;
+//         masterTl.to({}, { duration: pad }); // dummy tween to stretch this slide
+//     }
+// }
+// function addColorPanelsAnimation(slide, masterTl, label, offset = 0.2) {
+//     const panels = gsap.utils.toArray(slide.querySelectorAll(".color-panel"));
+
+//     if (!panels.length) return;
+
+//     // local timeline that will be nested inside the slider tl
+//     const localTl = gsap.timeline({
+//         onUpdate: () => {
+//             const progress = localTl.progress();
+//             let activeIndex = Math.round(progress * panels.length - 0.5);
+
+//             if (activeIndex >= panels.length) {
+//                 activeIndex = panels.length - 1;
+//             }
+
+//             panels.forEach((panel, index) => {
+//                 panel.classList.toggle("active", index === activeIndex);
+//             });
+//         }
+//     });
+
+//     panels.forEach((panel, index) => {
+//         const isLast = index === panels.length - 1;
+//         const nextPanel = isLast ? null : panels[index + 1];
+//         const currentContent = panel.querySelector(".colors-content");
+//         const nextContent = nextPanel ? nextPanel.querySelector(".colors-content") : null;
+
+//         if (!isLast) {
+//             // hide current content
+//             localTl.to(currentContent, {
+//                 clipPath: "inset(0 100% 0 0)",
+//                 duration: 0.2,
+//                 ease: "expo.inOut"
+//             });
+
+//             // shrink current panel
+//             localTl.to(
+//                 panel,
+//                 {
+//                     width: "5%",
+//                     ease: "expo.out"
+//                 },
+//                 "<"
+//             );
+
+//             // grow next panel
+//             localTl.to(
+//                 nextPanel,
+//                 {
+//                     width: "100%",
+//                     ease: "expo.out",
+//                     onStart: () => {
+//                         nextPanel.classList.add("active");
+//                         // if you want to do content show/hide, do it here:
+//                         // if (nextContent) {
+//                         //     nextContent.classList.add("show");
+//                         // }
+//                     }
+//                 },
+//                 "<"
+//             );
+//         } else {
+//             // last panel just fills out
+//             localTl.to(panel, {
+//                 width: "100%",
+//                 duration: 0.5,
+//                 ease: "expo.inOut"
+//             });
+//         }
+//     });
+
+//     // plug the local timeline into the main slider timeline
+//     // label = slide label or "slide-X-in-place"
+//     masterTl.add(localTl, `${label}+=${offset}`);
+
+//     // optionally: force a minimum segment duration so it’s not hyper-fast
+//     const MIN_SEGMENT = 15; // tweak
+//     const slideStart = masterTl.labels[label];
+//     const currentEnd = masterTl.duration();
+//     const currentLen = currentEnd - slideStart;
+
+//     if (currentLen < MIN_SEGMENT) {
+//         const pad = MIN_SEGMENT - currentLen;
+//         masterTl.to({}, { duration: pad });
+//     }
+// }
+
 function addSectionHeaderAnimation(tl, sectionHeader, label, offset = 2) {
     const title = sectionHeader.querySelector(".n_section-header__title");
     const number = sectionHeader.querySelector(".n_section-header__number");
@@ -2022,7 +2822,12 @@ function setupPageHeaderAni(wrapper, tl) {
 // TEXT REVEAL IN SLIDER
 function setupSliderTextReveal(wrapper, tl, isPageHeader) {
     const allHeadings = wrapper.querySelectorAll(".n_text-reveal__heading");
+    const isRippleGradient = wrapper.getAttribute("data-element") === "ripple-gradient";
 
+    if (isRippleGradient) {
+        // build the special video/text TL instead of normal text reveal
+        return createVideoTextScrubTimeline(wrapper);
+    }
     // console.log(wrapper);
 
     const endColor = wrapper.dataset.endColor || "#ffffff";
@@ -2041,12 +2846,40 @@ function setupSliderTextReveal(wrapper, tl, isPageHeader) {
     // });
 
     blocks.forEach((block, i) => {
-        const hasLogos = block.classList.contains("n_logo-reveal__block");
         // console.log(blocks);
         let tl = gsap.timeline();
         tl.call(() => block.classList.add("active")).set(block, { zIndex: 2 });
 
         const headings = block.querySelectorAll(".n_text-reveal__heading");
+        const hasLogos = block.classList.contains("n_logo-reveal__block");
+
+        // check for typography special cases
+        if (block.dataset.animateSpecial === "anton") {
+            let specialTl = animateAnton(block, wrapper);
+            masterTl.add(specialTl);
+            return;
+        }
+
+        if (block.dataset.animateSpecial === "instrument") {
+            masterTl.add(animateInstrument(block, wrapper));
+            return;
+        }
+
+        if (block.dataset.animateSpecial === "inter") {
+            masterTl.add(animateInter(block, wrapper));
+            return;
+        }
+
+        if (block.dataset.animateSpecial === "bk-switch--white") {
+            let specialTl = animateBk(block);
+            masterTl.add(specialTl);
+            return;
+        }
+
+        if (block.dataset.animateSpecial === "like-this") {
+            masterTl.add(animateLikeThis(block, wrapper));
+            return;
+        }
 
         // check for special cases
         if (block.dataset.animateSpecial === "logomark") {
@@ -2056,25 +2889,25 @@ function setupSliderTextReveal(wrapper, tl, isPageHeader) {
         }
 
         // make sure its not a logo block
-        // if (headings.length > 1 && !hasLogos) {
-        //     // this never runs
-        //     // 1) split each heading once, flatten into one big array of spans
-        //     const allWords = Array.from(headings).flatMap((h1) => splitTextIntoWords(h1));
+        if (headings.length > 1 && !hasLogos) {
+            // this is running only for typography text reveal currently. ?? but logo reveal block worked fine with it. whatever. 11.24.25 1030am
+            // 1) split each heading once, flatten into one big array of spans
+            const allWords = Array.from(headings).flatMap((h1) => splitTextIntoWords(h1));
 
-        //     // 2) prep them off-screen
-        //     prepareWords(allWords);
+            // 2) prep them off-screen
+            prepareWords(allWords);
 
-        //     // 3) animate them all in at once
-        //     tl.add(animateWordsIn(allWords, endColor, 0.05, 0.1));
+            // 3) animate them all in at once
+            tl.add(animateWordsIn(allWords, endColor, 0.05, 0.1));
 
-        //     // 4) then animate them all out
-        //     tl.add(animateWordsOut(allWords, 0.05, 0.1));
+            // 4) then animate them all out
+            tl.add(animateWordsOut(allWords, 0.05, 0.1));
 
-        //     // 5) cleanup & bail
-        //     tl.call(() => block.classList.remove("active")).set(block, { zIndex: 0 });
-        //     masterTl.add(tl);
-        //     return;
-        // }
+            // 5) cleanup & bail
+            tl.call(() => block.classList.remove("active")).set(block, { zIndex: 0 });
+            masterTl.add(tl);
+            return;
+        }
 
         headings.forEach((h1, headingIndex) => {
             // 1) Split the text into individual <span class="text-reveal__word">…</span>

@@ -1538,16 +1538,24 @@ function setupPageSlider(wrapper) {
                 duration: 4,
                 ease: "power4.inOut"
             });
-             // 3) pull the new container in from below
+            // 3) pull the new container in from below
             tl.fromTo(
                 slide,
                 { yPercent: 100 },
                 { yPercent: 0, ease: "power4.inOut", duration: 4 },
                 label
-            );            
+            );
         }
 
-       
+        const slideInPlaceLabel = `${label}-in-place`;
+
+        if (i > 0) {
+            tl.addLabel(slideInPlaceLabel, `>`);
+        } else {
+            // first slide is already in view, so content can start at the slide label
+            tl.add(slideInPlaceLabel, label);
+        }
+
         // if (i > 0) {
 
         // }
@@ -1588,11 +1596,29 @@ function setupPageSlider(wrapper) {
 
         // 0439 11.21.25 not sure i like this and text reveal offset. it feels dangerous bc they could overlap instead of sequencing properly
         // fans section animation
+        // if (fansSection) {
+        //     const SLIDE_TRANSITION_DURATION = i > 0 ? 4 : 0;
+        //     // const LOTTIE_OFFSET = SLIDE_TRANSITION_DURATION + 0.2;
+        //     const LOTTIE_OFFSET = 0.2;
+        //     setupFanSansLottie(slide, tl, label, LOTTIE_OFFSET);
+        // }
         if (fansSection) {
-            const SLIDE_TRANSITION_DURATION = i > 0 ? 4 : 0;
-            // const LOTTIE_OFFSET = SLIDE_TRANSITION_DURATION + 0.2;
             const LOTTIE_OFFSET = 0.2;
-            setupFanSansLottie(slide, tl, label, LOTTIE_OFFSET);
+
+            // 1) hook Lottie to the content label for THIS slide
+            setupFanSansLottie(slide, tl, slideInPlaceLabel, i, LOTTIE_OFFSET);
+
+            // 2) ensure this slide's segment is long enough so Lottie isn't hyper-fast
+            const FANS_MIN_SEGMENT = 8; // tweak this number to slow/speed Lottie
+
+            const slideStart = tl.labels[label];
+            const currentEnd = tl.duration();
+            const currentLen = currentEnd - slideStart;
+
+            if (currentLen < FANS_MIN_SEGMENT) {
+                const pad = FANS_MIN_SEGMENT - currentLen;
+                tl.to({}, { duration: pad }); // dummy tween to extend this slide's window
+            }
         }
 
         if (scrollAccordionEl) {
@@ -1606,28 +1632,26 @@ function setupPageSlider(wrapper) {
 function initPageSlider() {
     gsap.utils.toArray(".slider-wrapper").forEach(setupPageSlider);
 }
+function setupFanSansLottie(slide, tl, contentLabel, slideIndex, offsetSeconds = 0) {
+    console.log("setupFanSansLottie called for label:", contentLabel);
 
-function setupFanSansLottie(slide, tl, label, offsetSeconds = 0) {
     const section = slide.matches(".section-fans") ? slide : slide.querySelector(".section-fans");
     if (!section) return;
 
     const lottieContainer = section.querySelector(".section-fans__side--lottie");
-    const textWrapper = section.querySelector(".section-fans__text-wrapper");
-    const textBlocks = section.querySelectorAll(".section-fans__text");
-    const backgroundDivs = section.querySelectorAll(".section-fans__background-block");
+    const textWrapper     = section.querySelector(".section-fans__text-wrapper");
+    const textBlocks      = section.querySelectorAll(".section-fans__text");
+    const backgroundDivs  = section.querySelectorAll(".section-fans__background-block");
 
     if (!lottieContainer || !textWrapper || !textBlocks.length) return;
 
-    let currentFrame = 0;
-    let lastActiveIndex = -1;
-    let bgRevealed = false;
-
-    let accessibleFrame = section.querySelector(".section-fans__text").dataset.frame;
+    let currentFrame     = 0;
+    let lastActiveIndex  = -1;
+    let bgRevealed       = false;
+    const accessibleFrame = section.querySelector(".section-fans__text").dataset.frame;
 
     setMinHeight(textWrapper, textBlocks);
-    window.addEventListener("resize", () => {
-        setMinHeight(textWrapper, textBlocks);
-    });
+    window.addEventListener("resize", () => setMinHeight(textWrapper, textBlocks));
 
     gsap.set(backgroundDivs, { opacity: 0 });
 
@@ -1647,12 +1671,10 @@ function setupFanSansLottie(slide, tl, label, offsetSeconds = 0) {
         path: "https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/685456f50615bd9f4e88f274_FanSans_Animation3_cleaned.json"
     });
 
-    // fix blinking issue
     lottieAnimation.addEventListener("data_ready", () => {
         lottieAnimation.setSubframe(false);
     });
 
-    // 1. Trigger text changes based on frame (same logic as before)
     const frameTriggers = Array.from(textBlocks).map((el, index) => ({
         frame: parseInt(el.dataset.frame, 10),
         el,
@@ -1712,23 +1734,168 @@ function setupFanSansLottie(slide, tl, label, offsetSeconds = 0) {
         }
     });
 
-    // 2. When Lottie data is ready, wire it into the *slider timeline*
     lottieAnimation.addEventListener("DOMLoaded", () => {
         const totalFrames = lottieAnimation.totalFrames;
+
+        console.log("FanSans DOMLoaded for", contentLabel);
+
+        const contentStart = tl.labels[contentLabel] + offsetSeconds;
+        const slideStartLabel = `slide-${slideIndex}`;
+        const nextSlideLabel  = `slide-${slideIndex + 1}`;
+
+        const slideStart = tl.labels[slideStartLabel];
+        const slideEnd =
+            typeof tl.labels[nextSlideLabel] === "number"
+                ? tl.labels[nextSlideLabel]
+                : tl.duration();
+
+        const END_PADDING = 0.2;
+        let lottieDur = slideEnd - contentStart - END_PADDING;
+        if (lottieDur < 0.3) lottieDur = 0.3;
+
+        console.log({
+            contentStart,
+            slideStart,
+            slideEnd,
+            lottieDur
+        });
 
         const lottieTween = gsap.to(lottieAnimation, {
             frame: totalFrames - 1,
             ease: "none",
-            duration: 5, // <<< how long you want within this slide
+            duration: lottieDur,
             onUpdate() {
                 lottieAnimation.goToAndStop(lottieAnimation.frame, true);
             }
         });
 
-        // stick the tween into the main slider timeline at this slide's label
-        tl.add(lottieTween, `${label}+=${offsetSeconds}`);
+        tl.add(lottieTween, contentStart);
     });
 }
+
+// function setupFanSansLottie(slide, tl, label, offsetSeconds = 0) {
+//     console.log('setupFanSansLottie called for label:', label);
+//     const section = slide.matches(".section-fans") ? slide : slide.querySelector(".section-fans");
+//     if (!section) return;
+//     console.log('here')
+//     const lottieContainer = section.querySelector(".section-fans__side--lottie");
+//     const textWrapper = section.querySelector(".section-fans__text-wrapper");
+//     const textBlocks = section.querySelectorAll(".section-fans__text");
+//     const backgroundDivs = section.querySelectorAll(".section-fans__background-block");
+
+//     if (!lottieContainer || !textWrapper || !textBlocks.length) return;
+
+//     let currentFrame = 0;
+//     let lastActiveIndex = -1;
+//     let bgRevealed = false;
+
+//     let accessibleFrame = section.querySelector(".section-fans__text").dataset.frame;
+
+//     setMinHeight(textWrapper, textBlocks);
+//     window.addEventListener("resize", () => {
+//         setMinHeight(textWrapper, textBlocks);
+//     });
+
+//     gsap.set(backgroundDivs, { opacity: 0 });
+
+//     textBlocks.forEach((block) => {
+//         gsap.set(block, {
+//             y: 100,
+//             opacity: 0,
+//             immediateRender: false
+//         });
+//     });
+
+//     const lottieAnimation = lottie.loadAnimation({
+//         container: lottieContainer,
+//         renderer: "svg",
+//         loop: false,
+//         autoplay: false,
+//         path: "https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/685456f50615bd9f4e88f274_FanSans_Animation3_cleaned.json"
+//     });
+
+//     // fix blinking issue
+//     lottieAnimation.addEventListener("data_ready", () => {
+//         lottieAnimation.setSubframe(false);
+//     });
+
+//     // 1. Trigger text changes based on frame (same logic as before)
+//     const frameTriggers = Array.from(textBlocks).map((el, index) => ({
+//         frame: parseInt(el.dataset.frame, 10),
+//         el,
+//         index
+//     }));
+
+//     let currentTextBlock = null;
+
+//     lottieAnimation.addEventListener("enterFrame", (e) => {
+//         currentFrame = e.currentTime;
+
+//         if (currentFrame < parseInt(accessibleFrame, 10)) {
+//             gsap.to(backgroundDivs, {
+//                 opacity: 0,
+//                 y: 20,
+//                 duration: 0.15,
+//                 ease: "power2.inOut"
+//             });
+//         }
+
+//         const active = frameTriggers
+//             .filter((trigger) => currentFrame >= trigger.frame)
+//             .sort((a, b) => b.frame - a.frame)[0];
+
+//         if (!active || active.index === lastActiveIndex) return;
+
+//         lastActiveIndex = active.index;
+
+//         if (currentTextBlock) currentTextBlock.kill();
+//         console.log('Activating text block index:', active.index);
+//         textBlocks.forEach((el) => {
+//             gsap.set(el, { opacity: 0 });
+//         });
+
+//         currentTextBlock = gsap.to(active.el, {
+//             opacity: 1,
+//             y: 0,
+//             duration: 0.5,
+//             ease: "power2.out"
+//         });
+
+//         if (!bgRevealed && currentFrame >= parseInt(accessibleFrame, 10)) {
+//             bgRevealed = true;
+//             gsap.fromTo(
+//                 backgroundDivs,
+//                 {
+//                     width: "0%",
+//                     transformOrigin: "center center"
+//                 },
+//                 {
+//                     opacity: 1,
+//                     width: "100%",
+//                     duration: 1,
+//                     ease: "power4.out"
+//                 }
+//             );
+//         }
+//     });
+
+//     // 2. When Lottie data is ready, wire it into the *slider timeline*
+//     lottieAnimation.addEventListener("DOMLoaded", () => {
+//         const totalFrames = lottieAnimation.totalFrames;
+
+//         const lottieTween = gsap.to(lottieAnimation, {
+//             frame: totalFrames - 1,
+//             ease: "none",
+//             duration: 5, // <<< how long you want within this slide
+//             onUpdate() {
+//                 lottieAnimation.goToAndStop(lottieAnimation.frame, true);
+//             }
+//         });
+
+//         // stick the tween into the main slider timeline at this slide's label
+//         tl.add(lottieTween, `${label}+=${offsetSeconds}`);
+//     });
+// }
 
 function addPageHeaderAnimation(tl, wrapper, label) {
     let logoVideo = wrapper.querySelector(".n_bg-video--logo");
@@ -2041,7 +2208,6 @@ function setupSliderTextReveal(wrapper, tl, isPageHeader) {
     // });
 
     blocks.forEach((block, i) => {
-        const hasLogos = block.classList.contains("n_logo-reveal__block");
         // console.log(blocks);
         let tl = gsap.timeline();
         tl.call(() => block.classList.add("active")).set(block, { zIndex: 2 });
@@ -2056,25 +2222,25 @@ function setupSliderTextReveal(wrapper, tl, isPageHeader) {
         }
 
         // make sure its not a logo block
-        // if (headings.length > 1 && !hasLogos) {
-        //     // this never runs
-        //     // 1) split each heading once, flatten into one big array of spans
-        //     const allWords = Array.from(headings).flatMap((h1) => splitTextIntoWords(h1));
+        if (headings.length > 1 && !hasLogos) {
+            // this never runs
+            // 1) split each heading once, flatten into one big array of spans
+            const allWords = Array.from(headings).flatMap((h1) => splitTextIntoWords(h1));
 
-        //     // 2) prep them off-screen
-        //     prepareWords(allWords);
+            // 2) prep them off-screen
+            prepareWords(allWords);
 
-        //     // 3) animate them all in at once
-        //     tl.add(animateWordsIn(allWords, endColor, 0.05, 0.1));
+            // 3) animate them all in at once
+            tl.add(animateWordsIn(allWords, endColor, 0.05, 0.1));
 
-        //     // 4) then animate them all out
-        //     tl.add(animateWordsOut(allWords, 0.05, 0.1));
+            // 4) then animate them all out
+            tl.add(animateWordsOut(allWords, 0.05, 0.1));
 
-        //     // 5) cleanup & bail
-        //     tl.call(() => block.classList.remove("active")).set(block, { zIndex: 0 });
-        //     masterTl.add(tl);
-        //     return;
-        // }
+            // 5) cleanup & bail
+            tl.call(() => block.classList.remove("active")).set(block, { zIndex: 0 });
+            masterTl.add(tl);
+            return;
+        }
 
         headings.forEach((h1, headingIndex) => {
             // 1) Split the text into individual <span class="text-reveal__word">…</span>

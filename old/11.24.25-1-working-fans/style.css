@@ -448,6 +448,7 @@ svg {
     width: 100%;
 }
 
+
 .single-scroll-section .section-banner,
 .single-scroll-section .n_section-header,
 .single-scroll-section .section-split,
@@ -467,7 +468,7 @@ svg {
     width: 100vw;
     height: 100vh;
     position: relative;
-    border: 5px solid chartreuse;
+    border:5px solid chartreuse;
 }
 .observer-section {
     width: 100vw;
@@ -483,12 +484,13 @@ svg {
     overflow: hidden;
 }
 
-body {
+
+body{
     background-color: black;
 }
 /* PAGE SLIDER */
 .slider-wrapper {
-    position: relative; /* important for absolute .slide children */
+    position: relative;  /* important for absolute .slide children */
     height: 100vh;
     overflow: hidden;
 }
@@ -499,25 +501,16 @@ body {
     overflow: hidden;
 }
 
-.slider-inner .slide {
+.slider-inner  .slide {
     position: absolute;
     inset: 0;
     border: 2px solid chartreuse;
     background-color: red;
     height: 100svh;
-    overflow: auto;
-    max-height: 100svh;
-    overflow: hidden;
+    
     /*border: 1px solid red;*/
 }
 
-.slider-inner .section-banner__inner {
+.slider-inner .section-banner__inner{
     /* z-index: unset; */
-}
-
-.section-ripple-gradient {
-    max-width: 100vw;
-    overflow: hidden;
-}
-.section-fans {
 }
