@@ -1,10 +1,9 @@
 // TODO
 // check mobile
 // fix section split
+// re add nav bar animation
 // snapping not working right
 // fix element not found error
-// edit img in nav (asana)
-// edit mobile nav order
 
 // DONE
 // add wait for fonts to load before showing body.
@@ -14,9 +13,8 @@
 // fix double span on splitTextIntoWords
 // fix dot reveal
 // fix gsap target not found errors
-// re add nav bar animation
 
-gsap.registerPlugin(ScrollTrigger, SplitText);
+gsap.registerPlugin(ScrollTrigger, SplitText, GSDevTools);
 
 // console.log("hi from local");
 
@@ -1205,10 +1203,7 @@ function createWordTimeline(words, color, block, isLastBlock, isLastHeading) {
         const section = block.closest(".n_text-reveal-section");
         fastSVGElement = section ? section.querySelector(".fast-svg") : null;
     }
-
-    console.log(words)
-    let wordsArray = words.slice(1);
-    prepareWords(wordsArray);
+    prepareWords(words);
 
     // debugger;
     const tl = animateWordsIn(words, color);
