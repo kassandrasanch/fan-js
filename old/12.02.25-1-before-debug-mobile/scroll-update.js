@@ -4,6 +4,7 @@
 // fix element not found error
 // add page loader
 
+
 // DONE
 // fix gradient like this and first text reveal not showing
 // edit mobile nav order
@@ -208,15 +209,6 @@ function wireNav() {
 
         return { el, index, sliderIndex, slideIndex };
     });
-    window.FAN_DEBUG_ANCHORS = anchorMeta;
-    console.table(
-        anchorMeta.map((a) => ({
-            title: a.el.getAttribute("data-section-title"),
-            index: a.index,
-            sliderIndex: a.sliderIndex,
-            slideIndex: a.slideIndex
-        }))
-    );
 
     // ---- BUILD RANGES PER SLIDER, THEN DRIVE NAV VIA TICKER ----
     const sliderNavData = [];
@@ -362,7 +354,7 @@ function wireNav() {
         if (!meta || meta.sliderIndex === -1) {
             // not inside a slider → basic behavior
             lenis.scrollTo(targetElem, {
-                offset: 12,
+                offset: 0,
                 duration: 1.2,
                 lock: true
             });
@@ -372,7 +364,7 @@ function wireNav() {
         const slider = sliderMetas[meta.sliderIndex];
         if (!slider) {
             lenis.scrollTo(targetElem, {
-                offset: 12,
+                offset: 0,
                 duration: 1.2,
                 lock: true
             });
@@ -385,7 +377,7 @@ function wireNav() {
         if (!st || !duration) {
             // fallback
             lenis.scrollTo(targetElem, {
-                offset: 12,
+                offset: 0,
                 duration: 1.2,
                 lock: true
             });
@@ -407,11 +399,8 @@ function wireNav() {
         const endY = st.end;
         const y = startY + progress * (endY - startY);
 
-        const EXTRA_PX = 20;
-        const targetY = y + EXTRA_PX;
-
         // let Lenis animate the real scroll position
-        lenis.scrollTo(targetY, {
+        lenis.scrollTo(y, {
             duration: 1.2,
             lock: true
         });
@@ -888,9 +877,9 @@ function animateWordsOut(words, { fast = false } = {}) {
     tl.to(words, {
         yPercent: 100,
         opacity: 0,
-        duration: 0.8, // shorter in fast mode
+        duration:  0.8,   // shorter in fast mode
         ease: "power3.inOut",
-        stagger: 0.08 // tighter stagger in fast mode
+        stagger: 0.08    // tighter stagger in fast mode
     });
 
     return tl;
@@ -1038,9 +1027,10 @@ function createWordTimeline(words, color, block, isLastBlock, isLastHeading, isF
     } else if (isLastBlock && !hideLastBlock) {
     } else {
         let outTl = animateWordsOut(words);
-        if (isFirstBlock) {
-            outTl.timeScale(2);
+        if(isFirstBlock){
+             outTl.timeScale(2);
             // outTl = animateWordsOut(words, 0.3, 0.03)
+
         }
         tl.add(outTl);
         // tl.add(animateWordsOut(words));
@@ -1263,7 +1253,7 @@ function createVideoTextScrubTimeline(wrapper) {
                     block,
                     isLastBlock,
                     isLastHeading,
-                    isFirstBlock // <- tell it this is the first one
+                    isFirstBlock      // <- tell it this is the first one
                 )
             );
         });
@@ -1343,7 +1333,7 @@ function createVideoTextScrubTimeline(wrapper) {
                     block,
                     isLastBlock,
                     isLastHeading,
-                    isFirstBlock // false for these
+                    isFirstBlock     // false for these
                 )
             );
         });
@@ -1357,6 +1347,7 @@ function createVideoTextScrubTimeline(wrapper) {
 
     return videoTextTl;
 }
+
 
 // function createVideoTextScrubTimeline(wrapper) {
 //     const panels = gsap.utils.toArray(
@@ -1546,76 +1537,76 @@ function createStackedSliderTimeline(slider) {
             tl.fromTo(curImg, { xPercent: -100 }, { xPercent: 0 }, "<");
         }
     });
-    tl.timeScale(0.5);
+    tl.timeScale(0.2);
     return tl;
 }
 
-// function initScrollingSlider() {
-//     const sliderSection = document.querySelector(".n_scrolling-slider");
-//     const slidesContainer = sliderSection.querySelector(".scrolling-slider__track");
-//     const slides = gsap.utils.toArray(slidesContainer.querySelectorAll(".scrolling-slider__slide"));
-//     const sliderHeaderWrap = sliderSection.querySelector(".scrolling-slider__intro");
+function initScrollingSlider() {
+    const sliderSection = document.querySelector(".n_scrolling-slider");
+    const slidesContainer = sliderSection.querySelector(".scrolling-slider__track");
+    const slides = gsap.utils.toArray(slidesContainer.querySelectorAll(".scrolling-slider__slide"));
+    const sliderHeaderWrap = sliderSection.querySelector(".scrolling-slider__intro");
 
-//     // calculate widths
-//     const totalWidth = slidesContainer.scrollWidth;
-//     const visibleWidth = sliderSection.clientWidth; // includes any padding
-//     const scrollDist = totalWidth - visibleWidth + 200; // how far we actually need to move
+    // calculate widths
+    const totalWidth = slidesContainer.scrollWidth;
+    const visibleWidth = sliderSection.clientWidth; // includes any padding
+    const scrollDist = totalWidth - visibleWidth + 200; // how far we actually need to move
 
-//     // 1 initial states
-//     gsap.set(slides, { opacity: 0.5 });
-//     // gsap.set(sliderHeaderWrap, { yPercent: 100, opacity: 0 });
+    // 1 initial states
+    gsap.set(slides, { opacity: 0.5 });
+    // gsap.set(sliderHeaderWrap, { yPercent: 100, opacity: 0 });
 
-//     // 2 scrubbed, pinned timeline
-//     const tl = gsap.timeline({
-//         scrollTrigger: {
-//             trigger: sliderSection,
-//             start: "top top",
-//             end: `+=${scrollDist * 3}`, // twice the distance for more scrolls
-//             pin: true,
-//             scrub: 3,
-//             invalidateOnRefresh: true
-//             // markers: true
-//         }
-//     });
+    // 2 scrubbed, pinned timeline
+    const tl = gsap.timeline({
+        scrollTrigger: {
+            trigger: sliderSection,
+            start: "top top",
+            end: `+=${scrollDist * 3}`, // twice the distance for more scrolls
+            pin: true,
+            scrub: 3,
+            invalidateOnRefresh: true
+            // markers: true
+        }
+    });
 
-//     // ) header reveal (outside of the scrub timeline)
-//     // gsap.to(sliderHeaderWrap, {
+    // ) header reveal (outside of the scrub timeline)
+    // gsap.to(sliderHeaderWrap, {
 
-//     //   opacity: 1,
-//     //   duration: 1.2,
-//     //   ease: 'power4.out',
-//     //   delay: 0.15
-//     // });
+    //   opacity: 1,
+    //   duration: 1.2,
+    //   ease: 'power4.out',
+    //   delay: 0.15
+    // });
 
-//     // 4 fade in all slides once we start scrolling
-//     tl.to(
-//         slides,
-//         {
-//             opacity: 1,
-//             duration: 1.5,
-//             stagger: 0.3,
-//             ease: "power2.out"
-//         },
-//         "<"
-//     );
+    // 4 fade in all slides once we start scrolling
+    tl.to(
+        slides,
+        {
+            opacity: 1,
+            duration: 1.5,
+            stagger: 0.3,
+            ease: "power2.out"
+        },
+        "<"
+    );
 
-//     // 5  slide the track left by exactly scrollDist
-//     tl.to(
-//         slidesContainer,
-//         {
-//             x: -scrollDist,
-//             duration: slides.length * 1.8, // stretch this out proportional to # of slides
-//             ease: "power1.inOut"
-//         },
-//         "<"
-//     );
+    // 5  slide the track left by exactly scrollDist
+    tl.to(
+        slidesContainer,
+        {
+            x: -scrollDist,
+            duration: slides.length * 1.8, // stretch this out proportional to # of slides
+            ease: "power1.inOut"
+        },
+        "<"
+    );
 
-//     // 6 unpin
-//     tl.to(sliderSection, {
-//         opacity: 1,
-//         duration: 0.8
-//     });
-// }
+    // 6 unpin
+    tl.to(sliderSection, {
+        opacity: 1,
+        duration: 0.8
+    });
+}
 
 function createBigSliderTimeline(wrapper) {
     // each “panel” is the .n_big-slide element
@@ -1675,7 +1666,7 @@ function createBigSliderTimeline(wrapper) {
     });
 
     // optional: slow the whole thing down
-    tl.timeScale(0.5);
+    tl.timeScale(0.2);
 
     return tl;
 }
@@ -2791,12 +2782,11 @@ function waitForVideos(selectors = ".n_header video, .page-header video", timeou
         new Promise((res) => setTimeout(res, timeout)) // don't hang forever
     ]);
 }
-let hasInitialized = false;
+
+if ("scrollRestoration" in history) {
+    history.scrollRestoration = "manual";
+}
 async function init() {
-    if (hasInitialized) {
-        console.log("[Fanatics] init skipped – already ran");
-        return;
-    }
     await waitForFonts();
     await waitForVideos();
 

@@ -2,4 +2,11 @@ in terminal in gsap folder browser-sync start --server --files "**/*"
 add the file to webflow embed. 
 
 
+to start:
+browser-sync start --server --files "**/*" --port 3005
+
 cloudflared tunnel --url http://localhost:3005
+
+to build
+npm run build:js
+

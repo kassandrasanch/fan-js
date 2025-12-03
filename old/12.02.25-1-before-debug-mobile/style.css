@@ -6,9 +6,6 @@
 * {
     box-sizing: border-box;
 }
-html {
-   scrollbar-gutter: stable;
-}
 body {
     max-width: 100vw;
     overflow-x: hidden;
@@ -104,7 +101,7 @@ body.nav-open {
 
 .n_text-reveal-section {
     height: 100vh;
-    min-height: 100vh;
+    min-height: 100svh;
     max-height: 60rem;
     display: flex;
     justify-content: center;
@@ -306,7 +303,7 @@ body.nav-open {
 
 /*ACCORDION*/
 .n_scroll-accordion {
-    max-height: 100vh;
+    max-height: 100svh;
     padding: 0 5%;
     display: flex;
     align-items: center;
@@ -509,9 +506,9 @@ body {
     inset: 0;
     /* border: 2px solid chartreuse; */
     background-color: black;
-    height: 100vh;
+    height: 100svh;
     overflow: auto;
-    max-height: 100vh;
+    max-height: 100svh;
     overflow: hidden;
 
     /*border: 1px solid red;*/
