@@ -177,22 +177,6 @@ function wireNav() {
     navSectionsWindow.style.width = (sectionWidths[0] || 0) + "px";
     gsap.set(navSectionsInner, { yPercent: 0 });
 
-    // ---- MAP EACH ANCHOR -> WHICH SLIDER / SLIDE ----
-    // const anchorMeta = sectionAnchors.map((el, index) => {
-    //     let sliderIndex = -1;
-    //     let slideIndex = -1;
-
-    //     sliderMetas.forEach((s, si) => {
-    //         if (sliderIndex !== -1) return;
-    //         if (s.wrapper.contains(el)) {
-    //             sliderIndex = si;
-    //             const slide = el.closest(".slide");
-    //             slideIndex = slide ? s.slides.indexOf(slide) : -1;
-    //         }
-    //     });
-
-    //     return { el, index, sliderIndex, slideIndex };
-    // });
     const anchorMeta = sectionAnchors.map((el, index) => {
         let sliderIndex = -1;
         let slideIndex = -1;
@@ -209,14 +193,14 @@ function wireNav() {
         return { el, index, sliderIndex, slideIndex };
     });
     window.FAN_DEBUG_ANCHORS = anchorMeta;
-    console.table(
-        anchorMeta.map((a) => ({
-            title: a.el.getAttribute("data-section-title"),
-            index: a.index,
-            sliderIndex: a.sliderIndex,
-            slideIndex: a.slideIndex
-        }))
-    );
+    // console.table(
+    //     anchorMeta.map((a) => ({
+    //         title: a.el.getAttribute("data-section-title"),
+    //         index: a.index,
+    //         sliderIndex: a.sliderIndex,
+    //         slideIndex: a.slideIndex
+    //     }))
+    // );
 
     // ---- BUILD RANGES PER SLIDER, THEN DRIVE NAV VIA TICKER ----
     const sliderNavData = [];
@@ -258,7 +242,7 @@ function wireNav() {
         sliderNavData.push({ tl, ranges });
     });
 
-    // 🔁 Ticker: read each slider's ScrollTrigger progress and update nav
+    // Ticker: read each slider's ScrollTrigger progress and update nav
     gsap.ticker.add(() => {
         sliderNavData.forEach(({ tl, ranges }) => {
             const st = tl.scrollTrigger;
@@ -422,7 +406,6 @@ function wireNav() {
 }
 
 function setupPageSlider(wrapper) {
-    // each slide is a .slide
     const slides = gsap.utils.toArray(wrapper.querySelectorAll(".slide"));
     const total = slides.length;
 
@@ -581,14 +564,14 @@ function setupPageSlider(wrapper) {
         // setting up directions
         const prev = slides[i - 1];
 
-        // 1) slide the old container up or keep it for a stacked effect
+        // 1 slide the old container up or keep it for a stacked effect
         if (i > 0) {
             tl.to(prev, {
                 yPercent: -100,
                 duration: 4,
                 ease: "power4.inOut"
             });
-            // 3) pull the new container in from below
+            // 2 pull the new container in from below
             tl.fromTo(
                 slide,
                 { yPercent: 100 },
@@ -712,6 +695,11 @@ function setupPageSlider(wrapper) {
 //     gsap.utils.toArray(".slider-wrapper").forEach(setupPageSlider);
 // }
 function initPageSlider() {
+    const wrappers = gsap.utils.toArray(".slider-wrapper");
+
+    wrappers.forEach((wrapper) => {
+        wrapper.classList.add("js-slider");
+    });
     const sliders = gsap.utils
         .toArray(".slider-wrapper")
         .map((wrapper) => setupPageSlider(wrapper))
@@ -828,6 +816,26 @@ function prepareWords(words) {
 }
 
 function animateWordsIn(words, endColor, duration = 1, stagger = 0.15) {
+    // 0439 maybe make this a set and then a to?
+    // gsap.set(words, {
+    //     yPercent: 100,
+    //     opacity: 0,
+    //     color: "#E10600"
+    // });
+    // // Animate in
+    // return gsap.timeline()
+    //     .to(words, {
+    //         yPercent: 0,
+    //         opacity: 1,
+    //         duration,
+    //         ease: "power4.out",
+    //         stagger
+    //     })
+    //     .to(words, {
+    //         color: endColor,
+    //         duration,
+    //         stagger
+    //     }, 0);
     return gsap
         .timeline()
         .fromTo(
@@ -856,19 +864,6 @@ function animateWordsIn(words, endColor, duration = 1, stagger = 0.15) {
         );
 }
 
-// function animateWordsOut(words, duration = 0.8, stagger) {
-//     const tl = gsap.timeline();
-//     tl.to({}, { duration: 1.2 });
-//     tl.to(words, {
-//         yPercent: 100,
-//         opacity: 0,
-//         duration,
-//         ease: "power3.inOut",
-//         stagger
-//     });
-
-//     return tl;
-// }
 
 function animateWordsOut(words, { fast = false } = {}) {
     const tl = gsap.timeline();
@@ -878,19 +873,12 @@ function animateWordsOut(words, { fast = false } = {}) {
         tl.to({}, { duration: 1.2 });
     }
 
-    // tl.to(words, {
-    //     yPercent: 100,
-    //     opacity: 0,
-    //     duration: fast ? 0.35 : 0.8,   // shorter in fast mode
-    //     ease: "power3.inOut",
-    //     stagger: fast ? 0.03 : 0.08    // tighter stagger in fast mode
-    // });
     tl.to(words, {
         yPercent: 100,
         opacity: 0,
-        duration: 0.8, // shorter in fast mode
+        duration: 0.8, 
         ease: "power3.inOut",
-        stagger: 0.08 // tighter stagger in fast mode
+        stagger: 0.08 
     });
 
     return tl;
@@ -1037,11 +1025,12 @@ function createWordTimeline(words, color, block, isLastBlock, isLastHeading, isF
         }
     } else if (isLastBlock && !hideLastBlock) {
     } else {
-        let outTl = animateWordsOut(words);
-        if (isFirstBlock) {
-            outTl.timeScale(2);
-            // outTl = animateWordsOut(words, 0.3, 0.03)
-        }
+        // let outTl = animateWordsOut(words);
+        // if (isFirstBlock) {
+        //     outTl.timeScale(2);
+        //     // outTl = animateWordsOut(words, 0.3, 0.03)
+        // }
+        const outTl = animateWordsOut(words, { fast: isFirstBlock });
         tl.add(outTl);
         // tl.add(animateWordsOut(words));
     }
@@ -1546,7 +1535,7 @@ function createStackedSliderTimeline(slider) {
             tl.fromTo(curImg, { xPercent: -100 }, { xPercent: 0 }, "<");
         }
     });
-    tl.timeScale(0.5);
+    tl.timeScale(0.4);
     return tl;
 }
 
@@ -1675,7 +1664,7 @@ function createBigSliderTimeline(wrapper) {
     });
 
     // optional: slow the whole thing down
-    tl.timeScale(0.5);
+    tl.timeScale(0.4);
 
     return tl;
 }
@@ -2378,43 +2367,43 @@ function addDotAnimation(dotWrapper, tl, label, offset = 3.7) {
     );
 }
 
-function addSectionFadeUpAnimation(tl, fadeUpElements, label, offset = 3.7) {
-    fadeUpElements.forEach((item) => {
-        const parentBanner = item.closest(".section-banner");
-        const hasParentBanner = !!parentBanner;
+// function addSectionFadeUpAnimation(tl, fadeUpElements, label, offset = 3.7) {
+//     fadeUpElements.forEach((item) => {
+//         const parentBanner = item.closest(".section-banner");
+//         const hasParentBanner = !!parentBanner;
 
-        // Match your old behavior:
-        // - if inside banner → delay reveal (startFrom = top 10%)
-        // - else → normal behavior
-        const startOffset = hasParentBanner ? "+=3.5" : "+=3.7";
-        // tweak if needed — earlier or later
+//         // Match your old behavior:
+//         // - if inside banner → delay reveal (startFrom = top 10%)
+//         // - else → normal behavior
+//         const startOffset = hasParentBanner ? "+=3.5" : "+=3.7";
+//         // tweak if needed — earlier or later
 
-        // initial state
-        gsap.set(item, { opacity: 0, y: 50 });
+//         // initial state
+//         gsap.set(item, { opacity: 0, y: 50 });
 
-        // build the non-scrubbed tween
-        const fadeTl = gsap.timeline({ paused: true });
+//         // build the non-scrubbed tween
+//         const fadeTl = gsap.timeline({ paused: true });
 
-        fadeTl.to(item, {
-            opacity: 1,
-            y: 0,
-            duration: 0.5,
-            ease: "power2.out"
-        });
+//         fadeTl.to(item, {
+//             opacity: 1,
+//             y: 0,
+//             duration: 0.5,
+//             ease: "power2.out"
+//         });
 
-        // hook into master timeline & fire at the right moment
-        tl.add(() => {
-            const dir = tl.scrollTrigger.direction;
+//         // hook into master timeline & fire at the right moment
+//         tl.add(() => {
+//             const dir = tl.scrollTrigger.direction;
 
-            if (dir === 1) {
-                fadeTl.restart(); // play normally
-            } else {
-                fadeTl.pause(0);
-                gsap.set(item, { opacity: 0, y: 50 }); // reset
-            }
-        }, label + startOffset);
-    });
-}
+//             if (dir === 1) {
+//                 fadeTl.restart(); // play normally
+//             } else {
+//                 fadeTl.pause(0);
+//                 gsap.set(item, { opacity: 0, y: 50 }); // reset
+//             }
+//         }, label + startOffset);
+//     });
+// }
 
 function setupPageHeaderAni(wrapper, tl) {
     let fansVideo = wrapper.querySelector(".n_bg-video--fans");
@@ -2618,7 +2607,6 @@ function initScrollingSlider() {
     const sliderSection = document.querySelector(".n_scrolling-slider");
     const slidesContainer = sliderSection.querySelector(".scrolling-slider__track");
     const slides = gsap.utils.toArray(slidesContainer.querySelectorAll(".scrolling-slider__slide"));
-    const sliderHeaderWrap = sliderSection.querySelector(".scrolling-slider__intro");
 
     // calculate widths
     const totalWidth = slidesContainer.scrollWidth;
@@ -2634,7 +2622,7 @@ function initScrollingSlider() {
         scrollTrigger: {
             trigger: sliderSection,
             start: "top top",
-            end: `+=${scrollDist * 3}`, // twice the distance for more scrolls
+            end: `+=${scrollDist * 2}`, // twice the distance for more scrolls
             pin: true,
             scrub: 3,
             invalidateOnRefresh: true
@@ -2808,7 +2796,7 @@ async function init() {
     document.querySelector("body").style.display = "block";
 
     // Fade in the body after scripts load
-    gsap.fromTo("body", { opacity: 0 }, { opacity: 1, duration: 0.5 });
+    gsap.to("body", { opacity: 1, duration: 0.5 });
 
     ScrollTrigger.sort();
     ScrollTrigger.refresh();
@@ -2825,3 +2813,7 @@ setTimeout(() => {
 Promise.resolve(document.fonts?.ready).finally(() => {
     requestAnimationFrame(() => ScrollTrigger.refresh());
 });
+
+// window.addEventListener("load", () => {
+// gsap.to("body", { opacity: 1, duration: 0.5 });
+// })
