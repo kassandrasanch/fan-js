@@ -1347,130 +1347,6 @@ function createVideoTextScrubTimeline(wrapper) {
     return videoTextTl;
 }
 
-// function createVideoTextScrubTimeline(wrapper) {
-//     const panels = gsap.utils.toArray(
-//         wrapper.querySelectorAll(".ripple-gradient__bg-wrapper .ripple-gradient")
-//     );
-//     const total = panels.length;
-
-//     gsap.set(panels, { xPercent: (i) => (i === 0 ? 0 : 100) });
-
-//     const prevVid = panels[0]?.querySelector("video");
-//     const curVid = panels[1]?.querySelector("video");
-//     gsap.set([prevVid, curVid], { xPercent: 0 });
-
-//     const video = wrapper.querySelector("video");
-//     const blocks = gsap.utils.toArray(wrapper.querySelectorAll(".n_text-reveal__block"));
-//     const totalBlocks = blocks.length;
-
-//     if (video) {
-//         video.preload = "metadata";
-//         video.playsInline = true;
-//         video.muted = true;
-//     }
-
-//     // NO scrollTrigger, NO paused
-//     const videoTextTl = gsap.timeline({
-//         defaults: { ease: "none" }
-//     });
-
-//     // --- introTl (first 2 blocks) ---
-//     const introTl = gsap.timeline();
-//     blocks.slice(0, 2).forEach((block, blkIdx) => {
-//         const headings = block.querySelectorAll(".n_text-reveal__heading");
-//         headings.forEach((h1, hIdx) => {
-//             const words = splitTextIntoWords(h1);
-//             prepareWords(words);
-//             const isLastHeading = hIdx === headings.length - 1;
-//             const isLastBlock = blkIdx === 1;
-//             introTl.add(createWordTimeline(words, "#ffffff", block, isLastBlock, isLastHeading));
-//         });
-//     });
-
-//     // --- videoTl (rest of blocks + ripple swap) ---
-//     const videoTl = gsap.timeline();
-
-//     blocks.slice(2).forEach((block, i) => {
-//         const blockIndex = i + 2; // real index in `blocks`
-//         const headings = block.querySelectorAll(".n_text-reveal__heading");
-
-//         if (blockIndex === 2 && total >= 2) {
-//             videoTl.addLabel("rippleSwap");
-
-//             videoTl.to(
-//                 panels[0],
-//                 {
-//                     xPercent: -100,
-//                     duration: 1,
-//                     ease: "power4.inOut"
-//                 },
-//                 "rippleSwap"
-//             );
-
-//             videoTl.fromTo(
-//                 panels[1],
-//                 { xPercent: 100 },
-//                 {
-//                     xPercent: 0,
-//                     duration: 1,
-//                     ease: "power4.inOut"
-//                 },
-//                 "rippleSwap"
-//             );
-
-//             if (prevVid) {
-//                 videoTl.to(
-//                     prevVid,
-//                     {
-//                         xPercent: 50,
-//                         duration: 1,
-//                         ease: "power4.inOut"
-//                     },
-//                     "rippleSwap"
-//                 );
-//             }
-//             if (curVid) {
-//                 videoTl.fromTo(
-//                     curVid,
-//                     { xPercent: -50 },
-//                     {
-//                         xPercent: 0,
-//                         duration: 1,
-//                         ease: "power4.inOut"
-//                     },
-//                     "rippleSwap"
-//                 );
-//             }
-//         }
-
-//         headings.forEach((h1, headingIndex) => {
-//             const words = splitTextIntoWords(h1);
-//             prepareWords(words);
-//             const isLastBlock = blockIndex === totalBlocks - 1;
-//             const isLastHeading = headingIndex === headings.length - 1;
-//             const passLastHeading = isLastHeading && !isLastBlock;
-
-//             const wordAnim = createWordTimeline(
-//                 words,
-//                 "#ffffff",
-//                 block,
-//                 isLastBlock,
-//                 passLastHeading
-//             );
-
-//             videoTl.add(wordAnim);
-//         });
-//     });
-
-//     videoTextTl.add(introTl);
-//     videoTextTl.add(videoTl);
-
-//     // if you want it slower than the original scroll version:
-//     // comment out if too slow.
-//     videoTextTl.timeScale(0.9);
-
-//     return videoTextTl;
-// }
 
 function createStackedSliderTimeline(slider) {
     const slides = gsap.utils.toArray(slider.querySelectorAll(".n_stacked-slide"));
@@ -1538,73 +1414,6 @@ function createStackedSliderTimeline(slider) {
     tl.timeScale(0.4);
     return tl;
 }
-
-// function initScrollingSlider() {
-//     const sliderSection = document.querySelector(".n_scrolling-slider");
-//     const slidesContainer = sliderSection.querySelector(".scrolling-slider__track");
-//     const slides = gsap.utils.toArray(slidesContainer.querySelectorAll(".scrolling-slider__slide"));
-//     const sliderHeaderWrap = sliderSection.querySelector(".scrolling-slider__intro");
-
-//     // calculate widths
-//     const totalWidth = slidesContainer.scrollWidth;
-//     const visibleWidth = sliderSection.clientWidth; // includes any padding
-//     const scrollDist = totalWidth - visibleWidth + 200; // how far we actually need to move
-
-//     // 1 initial states
-//     gsap.set(slides, { opacity: 0.5 });
-//     // gsap.set(sliderHeaderWrap, { yPercent: 100, opacity: 0 });
-
-//     // 2 scrubbed, pinned timeline
-//     const tl = gsap.timeline({
-//         scrollTrigger: {
-//             trigger: sliderSection,
-//             start: "top top",
-//             end: `+=${scrollDist * 3}`, // twice the distance for more scrolls
-//             pin: true,
-//             scrub: 3,
-//             invalidateOnRefresh: true
-//             // markers: true
-//         }
-//     });
-
-//     // ) header reveal (outside of the scrub timeline)
-//     // gsap.to(sliderHeaderWrap, {
-
-//     //   opacity: 1,
-//     //   duration: 1.2,
-//     //   ease: 'power4.out',
-//     //   delay: 0.15
-//     // });
-
-//     // 4 fade in all slides once we start scrolling
-//     tl.to(
-//         slides,
-//         {
-//             opacity: 1,
-//             duration: 1.5,
-//             stagger: 0.3,
-//             ease: "power2.out"
-//         },
-//         "<"
-//     );
-
-//     // 5  slide the track left by exactly scrollDist
-//     tl.to(
-//         slidesContainer,
-//         {
-//             x: -scrollDist,
-//             duration: slides.length * 1.8, // stretch this out proportional to # of slides
-//             ease: "power1.inOut"
-//         },
-//         "<"
-//     );
-
-//     // 6 unpin
-//     tl.to(sliderSection, {
-//         opacity: 1,
-//         duration: 0.8
-//     });
-// }
 
 function createBigSliderTimeline(wrapper) {
     // each “panel” is the .n_big-slide element
@@ -1842,7 +1651,150 @@ function animateAnton(block) {
 
     return antonTl;
 }
+// fan impact lazy load version
+// function animateAnton(block) {
+//     let antonTl = gsap.timeline();
 
+//     const headings = block.querySelectorAll(".n_text-reveal__heading");
+//     const headingArray = Array.from(headings);
+//     const antonContainer = block.querySelector(".n_text-reveal__special.anton--lower");
+//     const antonUpperContainer = block.querySelector(".n_text-reveal__special.anton--upper");
+//     const wrapper = block.querySelector(".n_text-reveal__headings");
+
+//     function setUniformHeights() {
+//         const maxH = Math.ceil(
+//             Math.max(...headingArray.map((t) => t.getBoundingClientRect().height))
+//         );
+//         headingArray.forEach((t) => (t.style.height = `${maxH}px`));
+//         wrapper.style.height = `${maxH}px`;
+//     }
+//     setUniformHeights();
+//     window.addEventListener("resize", setUniformHeights);
+
+//     const words1 = splitTextIntoWords(headings[0]);
+//     const words2 = splitTextIntoWords(headings[1]);
+
+//     gsap.set([antonContainer, antonUpperContainer], {
+//         yPercent: 100,
+//         opacity: 0
+//     });
+
+//     // --- LOTTIE: lazy-load + cache ---
+//     let animLower = null;
+//     let animUpper = null;
+
+//     function ensureLowerLoaded() {
+//         if (animLower) return;
+//         animLower = lottie.loadAnimation({
+//             container: antonContainer,
+//             renderer: "svg",
+//             loop: true,
+//             autoplay: false,
+//             path: "https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/68b1ed95b77827f61fecf8cd_Fan_Impact(Lowercase).json"
+//         });
+//     }
+
+//     function ensureUpperLoaded() {
+//         if (animUpper) return;
+//         animUpper = lottie.loadAnimation({
+//             container: antonUpperContainer,
+//             renderer: "svg",
+//             loop: true,
+//             autoplay: false,
+//             path: "https://cdn.prod.website-files.com/67b4c8583d604cb6c2fc9a62/68b1ed953d81bfc59a631db0_Fan_Impact(UpperCase).json"
+//         });
+//     }
+
+//     // --- TIMELINE ---
+//     antonTl.to(antonContainer, {
+//         yPercent: 0,
+//         opacity: 1
+//     });
+
+//     // first time we hit this, it will load + then play
+//     antonTl.add(() => {
+//         ensureLowerLoaded();
+//         animLower.play();
+//     });
+
+//     antonTl.add(animateWordsIn(words1, "#ffffff"));
+//     antonTl.add(animateWordsOut(words1));
+
+//     antonTl.to(antonContainer, {
+//         yPercent: 100,
+//         opacity: 0,
+//         duration: 0.8,
+//         ease: "power3.inOut"
+//     });
+
+//     antonTl.to(antonUpperContainer, {
+//         yPercent: 0,
+//         opacity: 1
+//     });
+
+//     antonTl.add(() => {
+//         ensureUpperLoaded();
+//         animUpper.play();
+//     }, "<");
+
+//     antonTl.add(animateWordsIn(words2, "#ffffff"));
+//     antonTl.add(animateWordsOut(words2));
+
+//     antonTl.call(() => {
+//         block.classList.remove("active");
+//         block.style.zIndex = "0";
+//     });
+
+//     antonTl.to(antonUpperContainer, {
+//         yPercent: 100,
+//         opacity: 0,
+//         duration: 0.8,
+//         ease: "power3.inOut"
+//     });
+
+//     return antonTl;
+// }
+
+
+// function animateInstrument(block) {
+//     const heading = block.querySelector(".n_text-reveal__heading");
+//     const specialContainer = block.querySelector(".n_text-reveal__special");
+//     const lottieEl = block.querySelector("#instrument-lottie"); // Renamed to avoid confusion
+//     const path = lottieEl.getAttribute("data-src");
+
+//     const words = splitTextIntoWords(heading);
+
+//     let instrumentTl = gsap.timeline();
+
+//     instrumentTl.add(prepareWords(words));
+
+//     gsap.set(specialContainer, {
+//         yPercent: 100,
+//         opacity: 0
+//     });
+
+//     instrumentTl.to(specialContainer, {
+//         yPercent: 0,
+//         opacity: 1
+//     });
+
+//     instrumentTl.add(animateWordsIn(words, "#ffffff"));
+
+//     instrumentTl.add(animateWordsOut(words));
+
+//     instrumentTl.to(specialContainer, {
+//         yPercent: 100,
+//         opacity: 0,
+//         duration: 0.8,
+//         ease: "power3.inOut"
+//     });
+//     instrumentTl.call(() => {
+//         block.classList.remove("active");
+//         block.style.zIndex = "0";
+//     });
+
+//     return instrumentTl;
+// }
 function animateInstrument(block) {
     const heading = block.querySelector(".n_text-reveal__heading");
     const specialContainer = block.querySelector(".n_text-reveal__special");
@@ -2117,7 +2069,7 @@ function addColorPanelsAnimation(slide, masterTl, label, offset = 0.2) {
     // === globally slow the old behavior down ===
     // 0.3 = ~3.3x slower; tweak to taste (0.5 = 2x slower, 0.2 = 5x slower)
     // 0439 LOVE time scale
-    localTl.timeScale(0.3);
+    localTl.timeScale(0.15);
 
     // plug into master slider tl
     masterTl.add(localTl, `${label}+=${offset}`);
@@ -2579,29 +2531,6 @@ function startCount() {
     }, tickMs);
 }
 
-// console.log('COUNTER')
-// console.log(document.querySelector('.section-banner__counter').parentElement)
-
-// let bannerEl = document.querySelector(".section-banner__counter").parentElement;
-
-// console.log(bannerEl.nextElementSibling)
-
-// ScrollTrigger.create({
-//     trigger: ".section-banner__counter",
-//     start: "top 80%",
-//     endTrigger: "#wink-section",
-//     end: "bottom top",
-//     // markers: true,
-//     onEnter: startCount,
-//     onEnterBack: startCount, // ok to re‐run, because we clear the old one
-//     // onLeave: () => {
-//     //   clearInterval(counterInterval); // stop it when you scroll past
-//     //   document.querySelector('.counter-text').textContent = '';
-//     // },
-//     onLeave: () => clearInterval(counterInterval), // stop when bottom leaves
-//     onLeaveBack: () => clearInterval(counterInterval),
-//     invalidateOnRefresh: true
-// });
 
 function initScrollingSlider() {
     const sliderSection = document.querySelector(".n_scrolling-slider");
@@ -2785,6 +2714,10 @@ async function init() {
         console.log("[Fanatics] init skipped – already ran");
         return;
     }
+    
+    gsap.to('html', {
+        autoAlpha: 1
+    })
     await waitForFonts();
     await waitForVideos();
 
@@ -2793,10 +2726,10 @@ async function init() {
 
     wireNav();
     // Display the body
-    document.querySelector("body").style.display = "block";
+    // document.querySelector("body").style.display = "block";
 
     // Fade in the body after scripts load
-    gsap.to("body", { opacity: 1, duration: 0.5 });
+    // gsap.to("body", { opacity: 1, duration: 0.5 });
 
     ScrollTrigger.sort();
     ScrollTrigger.refresh();
