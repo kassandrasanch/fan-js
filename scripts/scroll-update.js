@@ -1,3 +1,4 @@
+// text reveal is snapping update
 // TODO
 // check mobile
 // snapping not working right
@@ -445,7 +446,10 @@ function setupPageSlider(wrapper) {
 
                 const labelEntries = Object.entries(tl.labels);
 
-                const snapLabelEntries = labelEntries.filter(([name]) => /^slide-\d+$/.test(name));
+                // Match main slides AND text-block labels for text reveals
+                const snapLabelEntries = labelEntries.filter(([name]) =>
+                    /^(slide-\d+|text-block-\d+-\d+|stacked-\d+|big-slide-\d+)$/.test(name)
+                );
                 // Rebuild normalized label positions on every call
                 const labels = snapLabelEntries
                     .map(([_, time]) => time / tl.duration())
@@ -473,7 +477,17 @@ function setupPageSlider(wrapper) {
                 const segEnd = labels[segIndex + 1] ?? 1;
                 const segLen = segEnd - segStart;
 
-                // if current slide has text-reveal or scroll-accordion, treat as special
+                // Check if we're in a text-block (text reveal with snap points)
+                const currentLabelName = snapLabelEntries.find(([_, time]) => {
+                    const progress = time / tl.duration();
+                    return Math.abs(progress - rawProgress) < 0.05;
+                })?.[0];
+
+                const isInTextBlock = currentLabelName && currentLabelName.startsWith('text-block-');
+                const isInNestedSlider = currentLabelName &&
+                    (currentLabelName.startsWith('stacked-') || currentLabelName.startsWith('big-slide-'));
+
+                // if current slide has special sections
                 const hasTextReveal = !!slides[segIndex].querySelector(".n_text-reveal-section");
                 const isAccordion = !!slides[segIndex].querySelector(".n_scroll-accordion");
                 const isColorsSection = !!slides[segIndex].querySelector(".colors-wrapper");
@@ -482,34 +496,43 @@ function setupPageSlider(wrapper) {
                     slides[segIndex].getAttribute("data-element") === "ripple-gradient";
                 const isBigSlider = !!slides[segIndex].querySelector(".n_big-slider_wrapper");
                 const isStackedSlider = !!slides[segIndex].querySelector(".n_stacked-slider");
-                const isSpecialSlide =
-                    hasTextReveal ||
+
+                // Text reveals WITH snap points get normal snap behavior
+                const isSpecialSlideWithEdgeSnap =
                     isAccordion ||
                     isColorsSection ||
                     rippleGradient ||
-                    isFansSection ||
-                    isBigSlider ||
-                    isStackedSlider;
+                    isFansSection;
 
-                // NORMAL SLIDES
-                if (!isSpecialSlide) {
-                    const GLOBAL_THRESHOLD = 0.08;
+                // NORMAL SLIDES + TEXT BLOCKS (snap to each block)
+                if (!isSpecialSlideWithEdgeSnap || isInTextBlock || isInNestedSlider) {
+                    const SNAP_THRESHOLD = 0.5; // 50% past midpoint = snap to next
 
-                    let closest = labels[0];
-                    labels.forEach((p) => {
-                        if (Math.abs(p - rawProgress) < Math.abs(closest - rawProgress)) {
-                            closest = p;
+                    // Find which two labels we're between
+                    let prevLabel = labels[0];
+                    let nextLabel = labels[labels.length - 1];
+
+                    for (let i = 0; i < labels.length - 1; i++) {
+                        if (rawProgress >= labels[i] && rawProgress < labels[i + 1]) {
+                            prevLabel = labels[i];
+                            nextLabel = labels[i + 1];
+                            break;
                         }
-                    });
-
-                    if (Math.abs(closest - rawProgress) < GLOBAL_THRESHOLD) {
-                        return closest;
                     }
 
-                    return rawProgress;
+                    // Calculate progress within this segment (0 to 1)
+                    const segmentLength = nextLabel - prevLabel;
+                    const progressInSegment = (rawProgress - prevLabel) / segmentLength;
+
+                    // Snap based on which side of the threshold we're on
+                    if (progressInSegment < SNAP_THRESHOLD) {
+                        return prevLabel; // Snap to previous
+                    } else {
+                        return nextLabel; // Snap to next
+                    }
                 }
 
-                // FOR SPECIAL SLIDES: only snap near edges
+                // FOR SPECIAL SLIDES (accordion, colors, fans, ripple): only snap near edges
                 const EDGE_PORTION = 0.1;
 
                 const leftSnapEnd = segStart + segLen * EDGE_PORTION; // first 10% of segment
@@ -599,29 +622,79 @@ function setupPageSlider(wrapper) {
 
         // additional animations can be added here
         if (textReveal) {
-            const textRevealTl = setupSliderTextReveal(slide, tl, isPageHeader);
+            const textRevealTl = setupSliderTextReveal(slide, tl, isPageHeader, i);
             const SLIDE_TRANSITION_DURATION = i > 0 ? 4 : 0;
             const TEXT_REVEAL_OFFSET = SLIDE_TRANSITION_DURATION + 0.1;
             // const TEXT_REVEAL_OFFSET = SLIDE_TRANSITION_DURATION + 0.2;
 
-            tl.add(textRevealTl, `${slideInPlaceLabel}+=${TEXT_REVEAL_OFFSET}`);
+            const textRevealStartPos = `${slideInPlaceLabel}+=${TEXT_REVEAL_OFFSET}`;
+            tl.add(textRevealTl, textRevealStartPos);
+
+            // Add snap labels for each text block to the MAIN timeline
+            // Read the actual label positions from the nested timeline
+            const textBlockLabels = Object.entries(textRevealTl.labels).filter(([name]) =>
+                name.startsWith(`text-block-${i}-`)
+            );
+
+            if (textBlockLabels.length > 0) {
+                const startTime = tl.labels[slideInPlaceLabel] + TEXT_REVEAL_OFFSET;
+
+                textBlockLabels.forEach(([labelName, nestedTime]) => {
+                    // Convert nested timeline time to main timeline time
+                    const mainTimelinePosition = startTime + nestedTime;
+                    tl.addLabel(labelName, mainTimelinePosition);
+                });
+            }
         }
 
         if (isPageHeader) {
             addPageHeaderAnimation(tl, wrapper, label);
         }
 
-        // section header animation
+        // section header animation (non-scrubbed, plays once)
         if (sectionHeader) {
-            tl.sectionHeader(sectionHeader);
+            const title = sectionHeader.querySelector(".n_section-header__title");
+            const number = sectionHeader.querySelector(".n_section-header__number");
+            const headers = [title, number];
+
+            // Set initial state
+            gsap.set(title, { color: "#E10600" });
+            gsap.set(headers, { opacity: 0, yPercent: 30 });
+
+            // Add callback to play animation once when slide is in place
+            tl.add(() => {
+                gsap.timeline()
+                    .to(headers, {
+                        opacity: 1,
+                        yPercent: 0,
+                        duration: 0.35,
+                        ease: "power4.out",
+                        stagger: 0.12
+                    })
+                    .to(title, {
+                        color: "#FFFFFF",
+                        duration: 0.35
+                    }, "<");
+            }, `${slideInPlaceLabel}-=0.2`); // Start slightly before slide is fully in place
         }
 
-        // fade-up elements animation
+        // fade-up elements animation (non-scrubbed, plays once)
         if (fadeUps.length > 0) {
-            // fadeUps.forEach((item) => {
-            //     tl.sectionFadeUp(item);
-            // });
-            tl.sectionFadeUp(fadeUps);
+            const items = gsap.utils.toArray(fadeUps);
+
+            // Set initial state
+            gsap.set(items, { opacity: 0, yPercent: 30 });
+
+            // Add callback to play animation once when slide is in place
+            tl.add(() => {
+                gsap.to(items, {
+                    opacity: 1,
+                    yPercent: 0,
+                    duration: 0.25,
+                    ease: "power2.out",
+                    stagger: 0.08
+                });
+            }, `${slideInPlaceLabel}-=0.2`);
         }
 
         // dot animation
@@ -964,6 +1037,9 @@ function createWordTimeline(words, color, block, isLastBlock, isLastHeading, isF
     if (!isFirstBlock || hideOnStart) {
         tl.add(animateWordsIn(words, color));
     }
+
+    // Add a label when text is fully visible (after animate-in, before animate-out)
+    tl.addLabel("text-visible");
 
     // else {
     //     // gsap.from(words, {
@@ -2101,15 +2177,18 @@ function addPageHeaderAnimation(tl, wrapper, label) {
         wrapper.querySelectorAll(".n_text-reveal__block, .n_logo-reveal__block")
     );
     const lastLine = blocks[blocks.length - 1];
+
     const lastWords = lastLine.querySelectorAll(".text-reveal__word");
 
-    tl.to(lastWords, {
-        yPercent: 100,
-        opacity: 0,
-        duration: 0.8,
-        ease: "power3.inOut",
-        stagger: 0.1
-    });
+
+
+    // tl.to(lastWords, {
+    //     yPercent: 100,
+    //     opacity: 0,
+    //     duration: 0.8,
+    //     ease: "power3.inOut",
+    //     stagger: 0.1
+    // });
     tl.to(logoVideo, {
         opacity: 1,
         duration: 2,
@@ -2385,7 +2464,7 @@ function setupPageHeaderAni(wrapper, tl) {
 }
 
 // TEXT REVEAL IN SLIDER
-function setupSliderTextReveal(wrapper, tl, isPageHeader) {
+function setupSliderTextReveal(wrapper, mainTl, isPageHeader, slideIndex) {
     const allHeadings = wrapper.querySelectorAll(".n_text-reveal__heading");
     const isRippleGradient = wrapper.getAttribute("data-element") === "ripple-gradient";
 
@@ -2499,11 +2578,32 @@ function setupSliderTextReveal(wrapper, tl, isPageHeader) {
                 isFirstBlock
             );
 
-            // 4) Add THAT entire mini-timeline into “tl” (so headings run in series, one after the other)
+            // 4) Add THAT entire mini-timeline into "tl" (so headings run in series, one after the other)
             tl.add(wordAnim);
         });
-        tl.call(() => block.classList.remove("active")).set(block, { zIndex: 0 });
+
+        // Find the "text-visible" label from the last heading's timeline
+        // This is when text is fully revealed and readable
+        const lastHeadingTl = tl.getChildren().find(child =>
+            child.labels && child.labels["text-visible"] !== undefined
+        );
+
+        if (lastHeadingTl && lastHeadingTl.labels["text-visible"] !== undefined) {
+            // Calculate position BEFORE adding tl to master
+            const blockStartInMaster = masterTl.duration();
+            const textVisibleOffset = lastHeadingTl.labels["text-visible"];
+            const labelPos = blockStartInMaster + textVisibleOffset;
+
+            masterTl.addLabel(`text-block-${slideIndex}-${i}`, labelPos);
+        } else {
+            // Fallback: add label at current position
+            masterTl.addLabel(`text-block-${slideIndex}-${i}`);
+        }
+
+        // Add the block's timeline to master
         masterTl.add(tl);
+
+        tl.call(() => block.classList.remove("active")).set(block, { zIndex: 0 });
     });
     return masterTl;
 }
